@@ -7,9 +7,9 @@
 #pragma once
 
 #include "Person.h"
-#include "B:\PROGRAMMING\Abu-Hadhoud\My Libraries\Files.h"
-#include "B:\PROGRAMMING\Abu-Hadhoud\My Classes\StringHandler.h"
-#include "B:\PROGRAMMING\Abu-Hadhoud\My Libraries\Dates.h"
+#include "Files.h"
+#include "StringHandler.h"
+#include "Dates.h"
 #include <string>
 
 class SystemUser : public Person {
@@ -326,3 +326,4 @@ public:
 	}
 
 };
+
