@@ -8,8 +8,8 @@
 
 #include "Person.h"
 #include "Global.h"
-#include "B:\PROGRAMMING\Abu-Hadhoud\My Libraries\Files.h"
-#include "B:\PROGRAMMING\Abu-Hadhoud\My Classes\StringHandler.h"
+#include "Files.h"
+#include "StringHandler.h"
 #include <fstream>
 #include <string>
 
@@ -346,3 +346,4 @@ public:
 	}
 
 };
+
