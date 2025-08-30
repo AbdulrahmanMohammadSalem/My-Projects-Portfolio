@@ -12,7 +12,7 @@
 #include <cmath>
 #include <iomanip>
 #include <sstream>
-#include "B:\PROGRAMMING\Abu-Hadhoud\My Libraries\Strings.h"
+#include "Strings.h"
 
 using namespace std;
 
@@ -854,4 +854,5 @@ namespace Utils {
 	}
 
 }
+
 
