@@ -1,3 +1,2 @@
-# My Projects Portfolio
-- *This repository contains the source code along with the LICENSES for my projects showcased in [my website](https://abdulrahmanmohammadsalem.github.io/).*
-- *Each brance in this repository represents a project category in my website.*
+# C++ Console Applications
+- *This branch corresponds to the [respective category](https://abdulrahmanmohammadsalem.github.io/CppConsoleApps/) in [my website](https://abdulrahmanmohammadsalem.github.io/).*
