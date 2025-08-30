@@ -8,7 +8,7 @@
 
 #include <string>
 #include <vector>
-#include "B:\PROGRAMMING\Abu-Hadhoud\My Classes\StringHandler.h"
+#include "StringHandler.h"
 
 using namespace std;
 
@@ -181,3 +181,4 @@ public:
 	}
 
 };
+
