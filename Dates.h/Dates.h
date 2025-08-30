@@ -25,8 +25,8 @@
 #include <iomanip>
 #include <ctime>
 #include <vector>
-#include "B:\PROGRAMMING\Abu-Hadhoud\My Libraries\Strings.h"
-#include "B:\PROGRAMMING\Abu-Hadhoud\My Libraries\Readers.h"
+#include "Strings.h"
+#include "Readers.h"
 
 using namespace std;
 
@@ -1285,3 +1285,4 @@ namespace dates {
 	}
 
 }
+
