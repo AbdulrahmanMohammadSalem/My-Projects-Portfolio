@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include "B:\PROGRAMMING\Abu-Hadhoud\My Libraries\Utils.h"
+#include "Utils.h"
 #include <string>
 #include <fstream>
 
@@ -418,3 +418,4 @@ namespace files {
 		return copyVctToFile(vLines, path, true) && result;
 	}
 }
+
