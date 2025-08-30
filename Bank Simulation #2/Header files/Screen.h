@@ -6,9 +6,9 @@
 
 #pragma once
 
-#include "B:\PROGRAMMING\Abu-Hadhoud\My Libraries\Readers.h"
-#include "B:\PROGRAMMING\Abu-Hadhoud\My Libraries\dates.h"
-#include "B:\PROGRAMMING\Abu-Hadhoud\My Libraries\Utils.h"
+#include "Readers.h"
+#include "Dates.h"
+#include "Utils.h"
 #include "BankClient.h"
 #include "SystemUser.h"
 #include "Currency.h"
@@ -216,3 +216,4 @@ protected:
 	}
 
 };
+
