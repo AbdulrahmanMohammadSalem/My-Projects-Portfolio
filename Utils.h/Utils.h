@@ -820,6 +820,15 @@ namespace Utils {
 	}
 
 	namespace Mesc {
+		string getCharacterString(const char & character, size_t length) {
+			string result = "";
+
+			for (length; length > 0; length--)
+				result += character;
+
+			return result;
+		}
+
 		void printHeader(const short & outerIndent, const char & symbol, const string & title, const string & subtitle = "") {
 			const short maxLength = Maths::getMax<short>(title.length(), subtitle.length());
 			const short shortIndent = round(sqrt(3 * maxLength));
@@ -846,37 +855,3 @@ namespace Utils {
 
 }
 
-/*
-	namespace helpers {
-		short getEncryptionCounter(const string & key) {
-			vector<short> vDigits;
-
-			for (const char & C : key)
-				if (isdigit(C))
-					vDigits.push_back(C - 48);
-
-			if (vDigits.empty())
-				return round(static_cast<float>(key[0] + key[key.length() - 1]) / 24);
-			else {
-				short s = key[0] + key[key.length() - 1];
-
-				if ((s % 9 < 4 && s % 5 != 1) || (s % 11 == 3 && s % 4 != 0))
-					s = 0;
-				else
-					s = 1;
-
-				for (s; s < vDigits.size(); s += 3)
-					vDigits[s] *= -1;
-
-				s = 0;
-				for (short & D : vDigits)
-					s += D;
-
-				if (s == 0)
-					return round(static_cast<float>(key[0] + key[key.length() - 1]) / 24);
-
-				return abs(s);
-			}
-		}
-	}
-*/
