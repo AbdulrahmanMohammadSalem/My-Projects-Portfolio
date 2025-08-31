@@ -171,6 +171,11 @@ public:
 	}
 
 	//Time Complexity: O(n)
+	void pushAfter(const size_t & target_index, const T & value) {
+		pushAfter(getNodeByIndex(target_index), value);
+	}
+
+	//Time Complexity: O(n)
 	void push(const size_t & index, const T & value) {
 		if (index > _Size) //If the index exceeds the size
 			throw out_of_range("OutOfRangeException: invalid index value [push(const size_t&, const T&)]");
@@ -548,5 +553,6 @@ public:
 	}
 
 };
+
 
 
