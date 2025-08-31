@@ -109,18 +109,7 @@ public:
 
 	//Time Complexity: O(n)
 	T getValue(const size_t & index) const {
-		if (index >= _Size) //If the index exceeds the size of the list
-			throw out_of_range("OutOfRangeException [getValue(const size_t)]");
-
-		Node * _head = _Head;
-
-		//Traversing the list until the desired node:
-		for (size_t i = 0; i < index; i++)
-			_head = _head->next;
-
-		//Now the _curr is "standing" on the desired node
-
-		return _head->value;
+		return getNodeByIndex(index)->value;
 	}
 
 	//Time Complexity: O(1)
@@ -554,3 +543,4 @@ public:
 	}
 
 };
+
