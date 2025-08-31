@@ -112,6 +112,11 @@ public:
 		return getNodeByIndex(index)->value;
 	}
 
+	//Time Complexity: O(n)
+	void setValue(const size_t & index, const T & value) {
+		getNodeByIndex(index)->value = value;
+	}
+
 	//Time Complexity: O(1)
 	void pushFront(const T & value) {
 		Node * new_node = new Node();
@@ -543,4 +548,5 @@ public:
 	}
 
 };
+
 
