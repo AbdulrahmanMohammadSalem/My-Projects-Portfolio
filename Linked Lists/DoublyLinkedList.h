@@ -184,6 +184,11 @@ public:
 		_Size++;
 	}
 
+	//Time Complexity: O(n)
+	void pushAfter(const size_t & target_index, const T & value) {
+		pushAfter(getNodeByIndex(target_index), value);
+	}
+
 	//Time Complexity: O(1)
 	void push(const size_t & index, const T & value) {
 		if (index > _Size) //If the index exceeds the size
@@ -548,5 +553,6 @@ public:
 	}
 
 };
+
 
 
