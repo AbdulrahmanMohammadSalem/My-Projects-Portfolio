@@ -1,4 +1,4 @@
-# C++ Console Applications
+# C++ Libraries
 - *This branch corresponds to the [respective category](https://abdulrahmanmohammadsalem.github.io/CppLibs/) in [my website](https://abdulrahmanmohammadsalem.github.io/).*
 
 # License — Personal Use Only
