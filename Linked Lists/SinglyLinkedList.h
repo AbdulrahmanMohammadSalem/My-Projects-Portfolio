@@ -107,9 +107,40 @@ public:
 		return _head;
 	}
 
+	//Time Complexity: O(1)
+	Node * getHead() const {
+		return _Head;
+	}
+
+	//Time Complexity: O(1)
+	Node * getTail() const {
+		return _Tail;
+	}
+
+	//Time Complexity: O(1)
+	T getFrontValue() const {
+		return _Head->value;
+	}
+
+	//Time Complexity: O(1)
+	T getBackValue() const {
+		return _Tail->value;
+	}
+
 	//Time Complexity: O(n)
 	T getValue(const size_t & index) const {
-		return getNodeByIndex(index)->value;
+		if (index >= _Size) //If the index exceeds the size of the list
+			throw out_of_range("OutOfRangeException [getValue(const size_t)]");
+
+		Node * _head = _Head;
+
+		//Traversing the list until the desired node:
+		for (size_t i = 0; i < index; i++)
+			_head = _head->next;
+
+		//Now the _curr is "standing" on the desired node
+
+		return _head->value;
 	}
 
 	//Time Complexity: O(n)
@@ -553,6 +584,3 @@ public:
 	}
 
 };
-
-
-
