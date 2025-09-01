@@ -186,7 +186,7 @@ public:
 
 
 	//Time Complexity: O(1)
-	void pushAfter(Node *& target_node, const T & value) {
+	void pushAfter(Node * target_node, const T & value) {
 		Node * new_node = new Node();
 		new_node->value = value;
 
@@ -209,7 +209,6 @@ public:
 	void pushAfter(const size_t & target_index, const T & value) {
 		pushAfter(getNodeByIndex(target_index), value);
 	}
-
 
 	//Time Complexity: O(1)
 	void push(const size_t & index, const T & value) {
