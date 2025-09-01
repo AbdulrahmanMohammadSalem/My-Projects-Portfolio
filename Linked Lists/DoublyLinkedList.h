@@ -117,6 +117,26 @@ public:
 		return _curr;
 	}
 
+	//Time Complexity: O(1)
+	Node * getHead() const {
+		return _Head;
+	}
+
+	//Time Complexity: O(1)
+	Node * getTail() const {
+		return _Tail;
+	}
+
+	//Time Complexity: O(1)
+	T getFrontValue() const {
+		return _Head->value;
+	}
+
+	//Time Complexity: O(1)
+	T getBackValue() const {
+		return _Tail->value;
+	}
+
 	//Time Complexity: O(n)
 	T getValue(const size_t & index) const {
 		return getNodeByIndex(index)->value;
@@ -164,6 +184,7 @@ public:
 		_Size++;
 	}
 
+
 	//Time Complexity: O(1)
 	void pushAfter(Node *& target_node, const T & value) {
 		Node * new_node = new Node();
@@ -188,6 +209,7 @@ public:
 	void pushAfter(const size_t & target_index, const T & value) {
 		pushAfter(getNodeByIndex(target_index), value);
 	}
+
 
 	//Time Complexity: O(1)
 	void push(const size_t & index, const T & value) {
@@ -553,6 +575,3 @@ public:
 	}
 
 };
-
-
-
