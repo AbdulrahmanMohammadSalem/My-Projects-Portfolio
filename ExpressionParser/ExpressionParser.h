@@ -454,16 +454,6 @@ private:
 
 	class ExpressionValidator {
 	private:
-		static size_t _getCharCount(const std::string & str, const char & chr) {
-			size_t _count = 0;
-
-			for (const char & C : str)
-				if (C == chr)
-					_count++;
-
-			return _count;
-		}
-
 		static bool _validateCharacters(const std::string & _exp) {
 			//Validating all characters:
 			std::string _allowedChars = "`;:.()+-*/^PC"; //These are the non-digit characters allowed to be in an expression
@@ -512,13 +502,13 @@ private:
 		}
 
 		static bool _validateBrackets(const std::string & _exp) {
-			if (_exp.find("()") != std::string::npos) //Tier 1 validation
+			if (_exp.find("()") != std::string::npos) //Validation level 1
 				return false;
 
-			if (_getCharCount(_exp, '(') != _getCharCount(_exp, ')')) //Tier 2 validation
+			if (CommonUtils::findRespectiveBracketPos(_exp, _exp.find('(')) == std::string::npos) //Validation level 2
 				return false;
 
-			//Tier 3 validation
+			//Validation level 3
 			for (size_t i = 0; i < _exp.length(); i++) { //DO NOT OMIT THE FIRST & LAST CHARACTERS HERE!
 				if (_exp[i] == '(' && std::string("*/^PC").find(_exp[i + 1]) != std::string::npos)
 					return false;
