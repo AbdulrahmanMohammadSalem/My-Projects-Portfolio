@@ -502,13 +502,16 @@ private:
 		}
 
 		static bool _validateBrackets(const std::string & _exp) {
-			if (_exp.find("()") != std::string::npos) //Validation level 1
+			//Validation level 1:
+			if (_exp.find("()") != std::string::npos)
 				return false;
 
-			if (CommonUtils::findRespectiveBracketPos(_exp, _exp.find('(')) == std::string::npos) //Validation level 2
+			//Validation level 2:
+			size_t _firstOpenBracketPos = _exp.find('(');
+			if (_firstOpenBracketPos != std::string::npos && CommonUtils::findRespectiveBracketPos(_exp, _firstOpenBracketPos) == std::string::npos)
 				return false;
 
-			//Validation level 3
+			//Validation level 3:
 			for (size_t i = 0; i < _exp.length(); i++) { //DO NOT OMIT THE FIRST & LAST CHARACTERS HERE!
 				if (_exp[i] == '(' && std::string("*/^PC").find(_exp[i + 1]) != std::string::npos)
 					return false;
