@@ -233,7 +233,7 @@ private:
 
 			for (size_t i = 0; i < _exp.length(); i++) {
 				if (_exp[i] == 'p') {
-					if (i > 0 && (isdigit(_exp[i - 1]) || std::string(".ep").find(_exp[i - 1]) != std::string::npos)) //Implicit multiplication
+					if (i > 0 && (isdigit(_exp[i - 1]) || std::string(").ep").find(_exp[i - 1]) != std::string::npos)) //Implicit multiplication
 						_result += '*' + CommonUtils::convertDoubleToStr(_pi, _precision, false);
 					else
 						_result += CommonUtils::convertDoubleToStr(_pi, _precision, false);
@@ -249,7 +249,7 @@ private:
 						i += _rightVal.length(); //The for loop will further increase the i by 1
 					}
 					else { //Euler's numbers
-						if (i > 0 && (isdigit(_exp[i - 1]) || std::string(".ep").find(_exp[i - 1]) != std::string::npos)) //Implicit multiplication
+						if (i > 0 && (isdigit(_exp[i - 1]) || std::string(").ep").find(_exp[i - 1]) != std::string::npos)) //Implicit multiplication
 							_result += '*' + CommonUtils::convertDoubleToStr(_e, _precision, false);
 						else
 							_result += CommonUtils::convertDoubleToStr(_e, _precision, false);
