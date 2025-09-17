@@ -621,7 +621,7 @@ private:
 			while (_outerNumPos > 0 && (_exp[_outerNumPos] == '.' || isdigit(_exp[_outerNumPos]) || std::string("`;:").find(_exp[_outerNumPos - 1]) != std::string::npos))
 				_outerNumPos--;
 
-			if (std::string("`;:*/^PC").find(_exp[_outerNumPos]) != std::string::npos)
+			if (std::string("`;:*/^PC").find(_exp[_outerNumPos]) != std::string::npos || (std::string("+-").find(_exp[_outerNumPos]) != std::string::npos && std::string("^PC").find(_exp[_operationPos]) != std::string::npos))
 				_outerNumPos++;
 
 			return _exp.substr(_outerNumPos, _operationPos - _outerNumPos);
@@ -665,15 +665,18 @@ private:
 						_partialExpression.replace(0, _num1.length() + _num2.length() + 2, CommonUtils::convertDoubleToStr(_subPartialResult, _precision));
 				}
 				else { //If there's not a magic character directly before _num1
-					//We check like this because the expression does NOT start with _num1 as seen above
-					if (_num1.front() == '-') { //If _num1 is negative
-						if (_subPartialResult >= 0) //If the result is positive
+					if (_num1.front() == '+' || _num1.front() == '-') { //If _num1 was extracted with the sign
+						if (_num1.front() == '-') { //If _num1 is negative
+							if (_subPartialResult >= 0) //If the result is positive
+								_partialExpression.replace(_operationPos - _num1.length(), _num1.length() + _num2.length() + 1, CommonUtils::convertDoubleToStr(_subPartialResult, _precision));
+							else //If the result is negative
+								_partialExpression.replace(_operationPos - _num1.length(), _num1.length() + _num2.length() + 1, CommonUtils::convertDoubleToStr(-_subPartialResult, _precision));
+						}
+						else //If _num1 is positive
 							_partialExpression.replace(_operationPos - _num1.length(), _num1.length() + _num2.length() + 1, CommonUtils::convertDoubleToStr(_subPartialResult, _precision));
-						else //If the result is negative
-							_partialExpression.replace(_operationPos - _num1.length(), _num1.length() + _num2.length() + 1, CommonUtils::convertDoubleToStr(-_subPartialResult, _precision));
 					}
-					else //If _num1 is positive
-						_partialExpression.replace(_operationPos - _num1.length(), _num1.length() + _num2.length() + 1, CommonUtils::convertDoubleToStr(_subPartialResult, _precision));
+					else //If _num1 was extracted without the sign -- If the operation was ^PC (The _subParialResult will be always positive here)
+						_partialExpression.replace(_operationPos - _num1.length(), _num1.length() + _num2.length() + 1, CommonUtils::convertDoubleToStr(_subPartialResult, _precision, false));
 				}
 			}
 			else //If the expression starts with _num1
