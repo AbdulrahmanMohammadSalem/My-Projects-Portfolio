@@ -2,47 +2,117 @@
 // Licensed under SALEM PERSONAL-USE LICENSE (SPUL) v1.0.
 // Use: private/personal projects only. No fork/modify/redistribute.
 // Fingerprint: SLM-2025-FP-18A3QE
-// Contact: abdulrahman.mohammad.salem@gmail.com
+// Contact: abdulrahman.mohammad.salem@gmail.com                                                      
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+//                                                                                          //
+//      _____                              _             ____                               //
+//     | ____|_  ___ __  _ __ ___  ___ ___(_) ___  _ __ |  _ \ __ _ _ __ ___  ___ _ __      //
+//     |  _| \ \/ / '_ \| '__/ _ \/ __/ __| |/ _ \| '_ \| |_) / _` | '__/ __|/ _ \ '__|     //
+//     | |___ >  <| |_) | | |  __/\__ \__ \ | (_) | | | |  __/ (_| | |  \__ \  __/ |        //
+//     |_____/_/\_\ .__/|_|  \___||___/___/_|\___/|_| |_|_|   \__,_|_|  |___/\___|_|        //
+//                |_|                                                                       //
+//                                                                                          //
+//////////////////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include <sstream>
 #include <iomanip>
 #include <cmath>
+#include <random>
+#include <stack>
+#include <vector>
 
 class ExpressionParser {
 public:
-	enum enEvaluationResults : short { 
-		eNoErrors, eInvalidExpression, eCannotDivideByZero, eEvaluationOutOfRange, eInvalidExponentiation,
-		eInvalidPermutationsOperands, eInvalidCombinationsOperands
+	enum ErrorCodes : short {
+		NO_ERRORS, INVALID_EXPRESSION, INVALID_IMPLICIT_MULTIPLICATION, INVALID_DECIMAL_POINTS, INVALID_BRACKETS, 
+		INVALID_SCIENTIFIC_NOTATION, INVALID_OPERATOR_PLACEMENT, INVALID_FUNCTION_ARGUMENTS, INVALID_FUNCTION_CALL,
+		INVALID_ABS_POLES, CANNOT_DIVIDE_BY_ZERO, INVALID_EXPONENTIATION, EVALUATION_OVERFLOW,
+		INVALID_PERMUTATIONS_OPERANDS, INVALID_COMBINATIONS_OPERANDS, OUT_OF_DOMAIN_ACOSH, OUT_OF_DOMAIN_ATANH, 
+		OUT_OF_DOMAIN_ACSCH, OUT_OF_DOMAIN_ASECH, OUT_OF_DOMAIN_ACOTH, OUT_OF_DOMAIN_CSCH, OUT_OF_DOMAIN_COTH, 
+		OUT_OF_DOMAIN_ASIN, OUT_OF_DOMAIN_ACOS, OUT_OF_DOMAIN_ACSC, OUT_OF_DOMAIN_ASEC, OUT_OF_DOMAIN_ACOT,
+		OUT_OF_DOMAIN_TAN, OUT_OF_DOMAIN_CSC, OUT_OF_DOMAIN_SEC, OUT_OF_DOMAIN_COT, OUT_OF_DOMAIN_LOG,
+		OUT_OF_DOMAIN_LOG10, OUT_OF_DOMAIN_LN, OUT_OF_DOMAIN_SQRT, OUT_OF_DOMAIN_NTHRT, INVALID_FACTORIAL_INPUT,
+		INVALID_SUM_LIMITS, INVALID_PROD_LIMITS
+	};
+
+	enum AngleUnits : short {
+		DEGREE, RADIAN, GRADIAN
 	};
 	
-	struct Result {
+	struct EvaluationResult {
 		double value = 0;
-		enEvaluationResults evaluationResult = enEvaluationResults::eNoErrors;
+		ErrorCodes errorCode = ErrorCodes::NO_ERRORS;
 	};
 
 private:
+	enum BracketTypes { REGULAR = 0, SQUARE = 1 };
+
 	std::string _expression;
 	short _precision;
+	AngleUnits _angleUnit;
+	bool _implicitMultHighPrec;
+	std::pair<std::string, ErrorCodes> _formattingResult;
 
 	class CommonUtils {
+	private:
+		static std::string _getFunctionName(const char & _funChar) {
+			switch (_funChar) {
+				case 'A': return "asinh";
+				case 'B': return "acosh";
+				case 'D': return "atanh";
+				case 'F': return "acsch";
+				case 'G': return "asech";
+				case 'H': return "acoth";
+				case 'J': return "sinh";
+				case 'K': return "cosh";
+				case 'L': return "tanh";
+				case 'M': return "csch";
+				case 'N': return "sech";
+				case 'O': return "coth";
+				case 'Q': return "asin";
+				case 'R': return "acos";
+				case 'S': return "atan";
+				case 'T': return "acsc";
+				case 'U': return "asec";
+				case 'V': return "acot";
+				case 'W': return "sin";
+				case 'X': return "cos";
+				case 'Y': return "tan";
+				case 'Z': return "csc";
+				case '~': return "sec";
+				case '@': return "cot";
+				case '{': return "log";
+				case '$': return "ln";
+				case '&': return "sqrt";
+				case '_': return "cbrt";
+				case '?': return "nthrt";
+				case '<': return "abs";
+				case '>': return "rndInt";
+				case 'k': return "sum";
+				case 'v': return "prod";
+			}
+		}
+
 	public:
 		//Returns std::string::npos when failing
-		static size_t findRespectiveBracketPos(const std::string & _exp, size_t _bracketPos) {
+		static size_t findRespectiveBracketPos(const std::string & _exp, size_t _bracketPos, const BracketTypes & _bracketType) {
 			if (_bracketPos >= _exp.length())
 				return std::string::npos;
 
-			short _netBrackets; //I think that using size_t here is overkill
+			const char * _brackets[2] = { "()", "[]" };
+			int _netBrackets; //I think that using size_t here is overkill
 
-			if (_exp[_bracketPos] == '(') { //We will move forward
+			if (_exp[_bracketPos] == _brackets[_bracketType][0]) { //We will move forward
 				_netBrackets = 1;
 				_bracketPos++;
 
 				while (_netBrackets > 0 && _bracketPos < _exp.length()) {
-					if (_exp[_bracketPos] == '(')
+					if (_exp[_bracketPos] == _brackets[_bracketType][0])
 						_netBrackets++;
-					else if (_exp[_bracketPos] == ')')
+					else if (_exp[_bracketPos] == _brackets[_bracketType][1])
 						_netBrackets--;
 
 					_bracketPos++;
@@ -51,14 +121,14 @@ private:
 				_bracketPos--;
 
 			}
-			else if (_exp[_bracketPos] == ')') { //We will move backwards
+			else if (_exp[_bracketPos] == _brackets[_bracketType][1]) { //We will move backwards
 				_netBrackets = -1;
 				_bracketPos--;
 
 				while (_netBrackets < 0 && _bracketPos != std::string::npos) {
-					if (_exp[_bracketPos] == '(')
+					if (_exp[_bracketPos] == _brackets[_bracketType][0])
 						_netBrackets++;
-					else if (_exp[_bracketPos] == ')')
+					else if (_exp[_bracketPos] == _brackets[_bracketType][1])
 						_netBrackets--;
 
 					_bracketPos--;
@@ -84,6 +154,9 @@ private:
 				_result = _oss.str();
 			}
 
+			if (stod(_result) == 0)
+				return _insertSign ? "+0" : "0";
+
 			size_t _firstNonZeroPos = _result.length() - 1;
 
 			//To cut off trailing zeros after the decimal point:
@@ -104,33 +177,281 @@ private:
 		}
 
 		static std::string extractRightValue(const std::string & _exp, const size_t & _operationPos) {
+			if (_operationPos == _exp.length() - 1)
+				return "";
+
 			size_t _outerNumPos = _operationPos + 1;
 
 			if (_exp[_outerNumPos] == '+' || _exp[_outerNumPos] == '-')
 				_outerNumPos++;
 
-			while (_outerNumPos < _exp.length() && (_exp[_outerNumPos] == '.' || isdigit(_exp[_outerNumPos])))
+			while (_outerNumPos < _exp.length() && (_exp[_outerNumPos] == '.' || std::isdigit(_exp[_outerNumPos])))
 				_outerNumPos++;
 
 			_outerNumPos--;
 
 			return _exp.substr(_operationPos + 1, _outerNumPos - _operationPos);
 		}
-	};
+		
+		//This will extract the value with the sign, unless it's ^PC!% with no magic chars
+		static std::string extractLeftValue(const std::string & _exp, const size_t & _operatorPos) {
+			if (_operatorPos == 0)
+				return "";
 
+			size_t _outerNumPos = _operatorPos - 1;
+
+			while (_outerNumPos > 0 && (_exp[_outerNumPos] == '.' || std::isdigit(_exp[_outerNumPos]) || std::string("`;:\'j").find(_exp[_outerNumPos - 1]) != std::string::npos))
+				_outerNumPos--;
+			
+			if (std::string("`;:\'j*/^PC").find(_exp[_outerNumPos]) != std::string::npos)
+				_outerNumPos++;
+
+			if (std::string("^PC!%").find(_exp[_operatorPos]) != std::string::npos && std::string("+-").find(_exp[_outerNumPos]) != std::string::npos && (_outerNumPos == 0 || std::string("`;:\'j").find(_exp[_outerNumPos - 1]) == std::string::npos))
+				_outerNumPos++;
+
+			return _exp.substr(_outerNumPos, _operatorPos - _outerNumPos);
+		}
+
+		static char getMagicCharacter(const char & _operator) {
+			switch (_operator) {
+				case '^': return '`';
+				case 'P': return ';';
+				case 'C': return ':';
+				case '!': return '\'';
+				case '%': return 'j';
+			}
+		}
+
+		//Returns std::string::npos on failure. It will search from the _startPos forward
+		static size_t findFirstCommaPos(const std::string & _exp, const size_t & _startPos = 0) {
+			size_t _commaPos = _startPos;
+
+			while (_commaPos < _exp.length() - 1 && _exp[_commaPos] != ',') {
+				if (_exp[_commaPos] == '(')
+					_commaPos = CommonUtils::findRespectiveBracketPos(_exp, _commaPos, BracketTypes::REGULAR) + 1;
+				else
+					_commaPos++;
+			}
+
+			if (_commaPos >= _exp.length() - 1) //DON'T REPLACE WITH   _commaPos == _exp.length() - 1
+				return std::string::npos;
+
+			return _commaPos;
+		}
+
+		static size_t getCharCount(const std::string & _str, const char & _chr) {
+			size_t _counter = 0;
+
+			for (const char & C : _str)
+				if (C == _chr)
+					_counter++;
+
+			return _counter;
+		}
+
+		static ErrorCodes validateBrackets(const std::string & _exp, const BracketTypes & _bracketType) {
+			const char * _brackets[2] = { "()", "[]" };
+			size_t _openBrackets = getCharCount(_exp, _brackets[_bracketType][0]);
+			size_t _closedBrackets = getCharCount(_exp, _brackets[_bracketType][1]);
+
+			if (_openBrackets == 0 && _closedBrackets == 0)
+				return ErrorCodes::NO_ERRORS;
+
+			//Validation level 1:
+			if (_openBrackets != _closedBrackets)
+				return ErrorCodes::INVALID_BRACKETS;
+
+			//Validation level 2:
+			if (_exp.find(_brackets[_bracketType]) != std::string::npos)
+				return ErrorCodes::INVALID_BRACKETS;
+
+			//Validation level 3:
+			size_t _pos = _exp.find(_brackets[_bracketType][0]);
+
+			if (_exp.substr(0, _pos).find(_brackets[_bracketType][1]) != std::string::npos)
+				return ErrorCodes::INVALID_BRACKETS;
+
+			short _netBrackets = 1; //Because _pos is already standing on 
+
+			do {
+				_pos++;
+
+				if (_exp[_pos] == _brackets[_bracketType][0])
+					_netBrackets++;
+				else if (_exp[_pos] == _brackets[_bracketType][1])
+					_netBrackets--;
+
+				if (_netBrackets < 0)
+					return ErrorCodes::INVALID_BRACKETS;
+			} while (_pos < _exp.length());
+
+			if (_bracketType == BracketTypes::REGULAR) { //Square brackets are already valid at this aspect
+				//Validation level 4:
+				for (size_t i = 0; i < _exp.length(); i++) { //DO NOT OMIT THE FIRST & LAST CHARACTERS HERE!
+					if (_exp[i] == '(' && std::string("*/^PC").find(_exp[i + 1]) != std::string::npos)
+						return ErrorCodes::INVALID_OPERATOR_PLACEMENT;
+
+					else if (_exp[i] == ')') {
+						if (std::string("+-*/^PC`;:\'j").find(_exp[i - 1]) != std::string::npos)
+							return ErrorCodes::INVALID_OPERATOR_PLACEMENT;
+
+						if (std::isdigit(_exp[i + 1]) || _exp[i + 1] == '.')
+							return ErrorCodes::INVALID_IMPLICIT_MULTIPLICATION;
+					}
+				}
+			}
+
+			return ErrorCodes::NO_ERRORS;
+		}
+	
+		//This method is used for internal use to format each evaluation step.
+		static std::string formatExpression(const std::string & _exp, const bool & _forceDecimalPoints, const bool & _forceAsterisks, const bool & _useAbsPoles, const bool & _useSpaces) {
+			const std::string _funChars = "ABDFGHJKLMNOQRSTUVWXYZ~@{$&_?<>kv", _magicChars = "`;:\'j";
+			std::string _result, _substr;
+			size_t _substrLength;
+
+			for (size_t i = 0; i < _exp.length(); i++) {
+				if (_magicChars.find(_exp[i]) != std::string::npos) {
+					if (_exp[i + 1] == '+') {
+						i++; //To skip that positive sign in the next iteration
+						continue;
+					}
+					else if (_exp[i + 1] == '-') {
+						_substr = extractRightValue(_exp, i + 1); //This will NOT extract the negative sign.
+						_substrLength = _substr.length();
+						_substr = formatExpression(_substr, _forceDecimalPoints, _forceAsterisks, _useAbsPoles, _useSpaces);
+						_result += "(-" + _substr + ')'; //We add the negative sign here.
+
+						i += _substrLength + 1;
+					}
+					else
+						continue;
+				}
+
+				else if (std::isdigit(_exp[i])) {
+					if (_forceDecimalPoints) {
+						if ((i == _exp.length() - 1 || (!std::isdigit(_exp[i + 1]) && _exp[i + 1] != '.')) && extractLeftValue(_exp, i).find('.') == std::string::npos)
+							_result += std::string() + _exp[i] + ".0";
+						else
+							_result += _exp[i];
+					}
+					else
+						_result += _exp[i];
+				}
+
+				else if (std::string("()PC!%").find(_exp[i]) != std::string::npos)
+					_result += _exp[i];
+
+				else if (_exp[i] == '+') {
+					if (i != 0 && std::string("*/^(PC,").find(_exp[i - 1]) == std::string::npos) {
+						if (_useSpaces)
+							_result += " + ";
+						else
+							_result += '+';
+					}
+					
+					//Otherwise, we omit the redundant plus sign and continue
+				}
+
+				else if (_exp[i] == '-') {
+					if (i > 0 && i < _exp.length() - 1 && std::string("*/^").find(_exp[i - 1]) != std::string::npos && (std::isdigit(_exp[i + 1]) || _exp[i + 1] == '.')) {
+						_substr = extractRightValue(_exp, i); //This will NOT extract the negative sign.
+						_substrLength = _substr.length();
+						_substr = formatExpression(_substr, _forceDecimalPoints, _forceAsterisks, _useAbsPoles, _useSpaces);
+						_result += "(-" + _substr + ')'; //We add the negative sign here.
+						
+						i += _substrLength;
+					}
+					else if (i == 0 || _exp[i - 1] == '(' || ((_exp[i + 1] == '(' || _exp[i + 1] == 'w') && !std::isdigit(_exp[i - 1]) && std::string(".!%w)").find(_exp[i - 1]) == std::string::npos)) //No need to check if the '-' is not the last char here.
+						_result += '-';
+					else {
+						if (_useSpaces)
+							_result += " - ";
+						else
+							_result += '-';
+					}
+				}
+
+				else if (std::string("/^").find(_exp[i]) != std::string::npos) {
+					if (_useSpaces)
+						_result += std::string() + ' ' + _exp[i] + ' ';
+					else
+						_result += _exp[i];
+				}
+
+				else if (_exp[i] == '*') {
+					if (_forceAsterisks) {
+						if (_useSpaces)
+							_result += " * ";
+						else
+							_result += '*';
+					}
+					else {
+						//Implicit multiplication: (decimal points are already formatted before)
+						if (!(_exp[i + 1] == '(' && (std::isdigit(_exp[i - 1]) || _exp[i - 1] == ')' || _exp[i - 1] == 'w')) && !(_exp[i + 1] == 'w' && (std::isdigit(_exp[i - 1]) || _exp[i - 1] == ')'))) {
+							if (_useSpaces)
+								_result += " * ";
+							else
+								_result += '*';
+						}
+					}
+				}
+
+				else if (_exp[i] == '.') {
+					if (i == 0 || !std::isdigit(_exp[i - 1]))
+						_result += '0'; //This is a must in all cases
+
+					if (_forceDecimalPoints && (i == _exp.length() - 1 || !std::isdigit(_exp[i + 1])))
+						_result += ".0";
+					else if (i < _exp.length() - 1 && std::isdigit(_exp[i + 1]))
+						_result += '.';
+
+					//Otherwise, we continue.
+				}
+
+				else if (_exp[i] == '<') {
+					if (_useAbsPoles) {
+						_substr = _exp.substr(i + 2, findRespectiveBracketPos(_exp, i + 1, BracketTypes::REGULAR) - i - 2);
+						_substrLength = _substr.length();
+						_substr = formatExpression(_substr, _forceDecimalPoints, _forceAsterisks, true, _useSpaces);
+
+						_result += std::string() + '|' + _substr + '|';
+						i += _substrLength + 2; //The for loop will then increase the i by one
+					}
+					else
+						_result += "abs";
+				}
+
+				else if (_funChars.find(_exp[i]) != std::string::npos)
+					_result += _getFunctionName(_exp[i]);
+
+				else if (_exp[i] == 'w')
+					_result += 'x';
+
+				else if (_exp[i] == ',') {
+					if (_useSpaces)
+						_result += ", ";
+					else
+						_result += ',';
+				}
+
+				else
+					_result += '?'; //For debugging -- Unknown case
+			}
+
+			return _result;
+		}
+		
+	};
+	
 	class ExpressionFormatter {
 	private:
 		short _precision;
+		const std::string _funChars = "ABDFGHJKLMNOQRSTUVWXYZ~@{$&_?<>kv";
 
-		static bool _validatePi(const std::string & _exp) {
-			size_t _pPos = 0;
-
-			while ((_pPos = _exp.find('p', _pPos)) != std::string::npos) {
-				if (_pPos == _exp.length() - 1 || _exp[_pPos + 1] != 'i')
-					return false;
-				else
-					_pPos++;
-			}
+		bool _validateFunChars(const std::string & _exp) {
+			if (_exp.find_first_of(_funChars) != std::string::npos || _exp.find_first_of("zfw") != std::string::npos)
+				return false;
 
 			return true;
 		}
@@ -181,10 +502,10 @@ private:
 			std::string _result = "";
 
 			if (_exp.front() == '.') {
-				if (isdigit(_exp[1]))
+				if (std::isdigit(_exp[1]))
 					_result += '.';
-				else if (_exp[1] == '.')
-					return ""; //This will cease any future processes, and force exit with _eInvalidExpression result
+				else if (_exp[1] == '.' || std::string("efzx").find(_exp[1]) != std::string::npos)
+					return "";
 				else
 					_result += '0';
 			}
@@ -193,7 +514,9 @@ private:
 
 			for (size_t i = 1; i < _exp.length() - 1; i++) {
 				if (_exp[i] == '.') {
-					if (!(isdigit(_exp[i - 1]) || _exp[i - 1] == '.' || isdigit(_exp[i + 1]) || _exp[i + 1] == '.'))
+					if (std::string("efzx)!%").find(_exp[i - 1]) != std::string::npos || std::string("efzx").find(_exp[i + 1]) != std::string::npos)
+						return "";
+					if (!(std::isdigit(_exp[i - 1]) || _exp[i - 1] == '.' || std::isdigit(_exp[i + 1]) || _exp[i + 1] == '.'))
 						_result += '0';
 					else
 						_result += '.'; //Might be rejected later
@@ -203,10 +526,10 @@ private:
 			}
 
 			if (_exp.back() == '.') {
-				if (!isdigit(_exp[_exp.length() - 2]) && _exp[_exp.length() - 2] != '.')
+				if (!std::isdigit(_exp[_exp.length() - 2]) && _exp[_exp.length() - 2] != '.')
 					_result += '0';
 				else
-					return ""; //This will cease any future processes, and force exit with _eInvalidExpression result
+					return "";
 			}
 			else
 				_result += _exp.back();
@@ -214,7 +537,7 @@ private:
 			return _result;
 		}
 
-		static std::string _replaceAll(std::string _str, const std::string & _replaceFrom, const char & _replaceTo) {
+		static std::string _replaceAll(std::string _str, const std::string & _replaceFrom, const std::string & _replaceTo) {
 			size_t _firstPos = 0;
 
 			while ((_firstPos = _str.find(_replaceFrom, _firstPos)) != std::string::npos) {
@@ -224,144 +547,558 @@ private:
 
 			return _str;
 		}
+		
+		static int _getNetSquareBracketsBefore(const std::string & _exp, const size_t & _upUntil) {
+			int _netBrackets = 0;
 
-		std::string _formatConstantsAndScientificNotation(const std::string & _exp) {
-			const double _pi = 3.14159265358979324;
-			const double _e = 2.71828182845904524;
-
-			std::string _result, _rightVal;
-
-			for (size_t i = 0; i < _exp.length(); i++) {
-				if (_exp[i] == 'p') {
-					if (i > 0 && (isdigit(_exp[i - 1]) || std::string(").ep").find(_exp[i - 1]) != std::string::npos)) //Implicit multiplication
-						_result += '*' + CommonUtils::convertDoubleToStr(_pi, _precision, false);
-					else
-						_result += CommonUtils::convertDoubleToStr(_pi, _precision, false);
-
-					if (i < _exp.length() - 1 && (isdigit(_exp[i + 1]) || _exp[i + 1] == '.'))
-						return ""; //This will cease any future processes, and force exit with _eInvalidExpression result
-				}
-				else if (_exp[i] == 'e') {
-					if (i < _exp.length() - 1 && (isdigit(_exp[i + 1]) || _exp[i + 1] == '.')) { //Scientific notation
-						_rightVal = CommonUtils::extractRightValue(_exp, i);
-						_result += "*10^" + _rightVal;
-
-						i += _rightVal.length(); //The for loop will further increase the i by 1
-					}
-					else { //Euler's numbers
-						if (i > 0 && (isdigit(_exp[i - 1]) || std::string(").ep").find(_exp[i - 1]) != std::string::npos)) //Implicit multiplication
-							_result += '*' + CommonUtils::convertDoubleToStr(_e, _precision, false);
-						else
-							_result += CommonUtils::convertDoubleToStr(_e, _precision, false);
-					}
-				}
-				else
-					_result += _exp[i];
+			for (size_t i = 0; i < _upUntil; i++) {
+				if (_exp[i] == '[')
+					_netBrackets++;
+				else if (_exp[i] == ']')
+					_netBrackets--;
 			}
 
+			return _netBrackets;
+		}
+
+		static void _fillAmbiguousPoles(std::string & _exp, const std::vector<size_t> & _vPositions, const char & _bracket) {
+			for (const size_t & P : _vPositions)
+				_exp[P] = _bracket;
+		}
+
+		static std::pair<std::string, ErrorCodes> _bruteForceAmbiguousPoles(std::string _exp, const std::vector<size_t> & _vPositions, const size_t & _ambiguousIndex) {
+			if (_ambiguousIndex == _vPositions.size()) { //No more poles
+				if (CommonUtils::validateBrackets(_exp, BracketTypes::SQUARE) == ErrorCodes::INVALID_BRACKETS)
+					return { "", ErrorCodes::INVALID_ABS_POLES };
+
+				return { _exp, ErrorCodes::NO_ERRORS };
+			}
+
+			std::pair<std::string, ErrorCodes> _firstBranch, _secondBranch, _bruteForceResult;
+
+			//First branch:
+			_exp[_vPositions[_ambiguousIndex]] = '[';
+
+			_bruteForceResult = _bruteForceAmbiguousPoles(_exp, _vPositions, _ambiguousIndex + 1);
+
+			if (_bruteForceResult.second == ErrorCodes::NO_ERRORS)
+				return _bruteForceResult;
+
+			//Second branch:
+			_exp[_vPositions[_ambiguousIndex]] = ']';
+
+			return _bruteForceAmbiguousPoles(_exp, _vPositions, _ambiguousIndex + 1);
+		}
+		
+		std::pair<std::string, ErrorCodes> _formatAbsPoles(std::string & _exp) {
+		//We start by filling the definite brackets, then brute force the ambiguous ones.
+		size_t i = _exp.find('|');
+
+		if (i == std::string::npos)
+			return { _exp, ErrorCodes::NO_ERRORS };
+
+		if (CommonUtils::getCharCount(_exp, '|') % 2) //If odd
+			return { _exp, ErrorCodes::INVALID_ABS_POLES };
+
+		const std::string _forbiddenChars = "*/^PC,";
+
+		if (_exp.length() == 1 || _forbiddenChars.find(_exp[i + 1]) != std::string::npos) //Must NOT be opened
+			return { _exp, ErrorCodes::INVALID_EXPRESSION };
+
+		_exp[i] = '[';
+
+		size_t j = _exp.rfind('|');
+		std::vector<size_t> _vAmbiguous;
+
+		while ((i = _exp.find('|', i + 1)) != std::string::npos && i < j) {
+			if (_exp[i - 1] == '[' || _forbiddenChars.find(_exp[i - 1]) != std::string::npos || std::string("+-").find(_exp[i - 1]) != std::string::npos || _funChars.find(_exp[i - 1]) != std::string::npos) { //Must NOT be closed
+				if (_forbiddenChars.find(_exp[i + 1]) != std::string::npos) {//Must NOT be opened
+					if (_exp[i + 1] == ',')
+						return { "", ErrorCodes::INVALID_EXPRESSION };
+
+					return { "", ErrorCodes::INVALID_OPERATOR_PLACEMENT };
+				}
+
+				_exp[i] = '[';
+			}
+
+			else if (_forbiddenChars.find(_exp[i + 1]) != std::string::npos) { //Must NOT be opened
+				if (_exp[i - 1] == '[')
+					return { "", ErrorCodes::INVALID_ABS_POLES };
+				else
+					_exp[i] = ']'; //We would have already checked "Must NOT be closed";
+			}
+			else { //Might be open or closed
+				if (std::isdigit(_exp[i + 1]) || _exp[i + 1] == '.' || (_getNetSquareBracketsBefore(_exp, i) == 0 && CommonUtils::getCharCount(_exp.substr(0, i), '|') == 0)) //Must NOT be closed
+					_exp[i] = '[';
+				else //Ambiguous case: the pole is followed by a sign, and before it is a digit/decimal point. Brackets are not balanced before.
+					_vAmbiguous.push_back(i);
+			}
+
+		}
+
+		if (_exp[j - 1] == '[' || _forbiddenChars.find(_exp[j - 1]) != std::string::npos || std::string("+-").find(_exp[j - 1]) != std::string::npos || _funChars.find(_exp[j - 1]) != std::string::npos) //Must NOT be closed
+			return { "", ErrorCodes::INVALID_EXPRESSION };
+
+		_exp[j] = ']';
+
+		if (!_vAmbiguous.empty()) {
+			//A last resort before brute forcing the correct arrangement:
+			i = CommonUtils::getCharCount(_exp, '[');
+			j = CommonUtils::getCharCount(_exp, ']');
+
+			if (i != j && std::max(i, j) - std::min(i, j) == _vAmbiguous.size())
+				_fillAmbiguousPoles(_exp, _vAmbiguous, i > j ? ']' : '[');
+			else
+				//Brute forcing:
+				return _bruteForceAmbiguousPoles(_exp, _vAmbiguous, 0);
+		}
+
+		return { _exp, ErrorCodes::NO_ERRORS };
+	}
+
+		static void _formatSquareBracketsToFuns(std::string & _exp) {
+			size_t _openBracketPos;
+			std::string _subString;
+
+			while ((_openBracketPos = _exp.find('[')) != std::string::npos) {
+				_subString = _exp.substr(_openBracketPos + 1, CommonUtils::findRespectiveBracketPos(_exp, _openBracketPos, BracketTypes::SQUARE) - _openBracketPos - 1);
+
+				_exp.replace(_openBracketPos, _subString.length() + 2, std::string("<(") + _subString + ')');
+			}
+		}
+
+		std::pair<std::string, ErrorCodes> _formatAbsoluteValues(std::string & _exp) {
+			std::pair<std::string, ErrorCodes> _result = _formatAbsPoles(_exp);
+
+			if (_result.second != ErrorCodes::NO_ERRORS)
+				return _result;
+
+			_formatSquareBracketsToFuns(_result.first);
 			return _result;
 		}
 
-		static std::string _formatImplicitMultiplication(const std::string & _exp, const bool & _implicitMultHighPrec) {
+		static void _replaceFunNames(std::string & _exp) {
+			//Other character used: efz%!j
+			//This order is very important when replacing:
+			static const std::pair<std::string, char> _functions[] = {
+				{"asinh", 'A'}, {"acosh", 'B'}, {"atanh", 'D'}, {"acsch", 'F'}, {"asech", 'G'}, {"acoth", 'H'},
+				{"sinh", 'J'}, {"cosh", 'K'}, {"tanh", 'L'}, {"csch", 'M'}, {"sech", 'N'}, {"coth", 'O'},
+				{"asin", 'Q'}, {"acos", 'R'}, {"atan", 'S'}, {"acsc", 'T'}, {"asec", 'U'}, {"acot", 'V'},
+				{"sin", 'W'}, {"cos", 'X'}, {"tan", 'Y'}, {"csc", 'Z'}, {"sec", '~'}, {"cot", '@'},
+				{"log", '{'}, {"ln", '$'}, {"sqrt", '&'}, {"cbrt", '_'}, {"nthrt", '?'}, {"abs", '<'},
+				{"rndInt", '>'}, {"sum", 'k'}, { "prod", 'v' }
+			};
+
+			for (const std::pair<std::string, char> & P : _functions)
+				_exp = _replaceAll(_exp, P.first, std::string(1, P.second));
+		}
+
+		//This only formats the most inner function
+		std::string _formatImplicitBrackets_Funs(std::string _exp) {
+			size_t _mostInnerFunPos = 0, _clonePos, _partialExpressionLength;
+			std::string _partialExpression;
+
+			while ((_mostInnerFunPos = _exp.find_first_of(_funChars, _mostInnerFunPos)) != std::string::npos) {
+				do _mostInnerFunPos++;
+				while (_funChars.find(_exp[_mostInnerFunPos]) != std::string::npos);
+
+				_clonePos = _mostInnerFunPos--; //Don't replace with - 1
+
+				if (_clonePos == _exp.length())
+					return "";
+
+				//The _clonePos is now on the chracter directly after the fun char
+				if (_exp[_clonePos] == '(') { //If the inner function has its own open bracket
+					if ((_partialExpressionLength = CommonUtils::findRespectiveBracketPos(_exp, _clonePos, BracketTypes::REGULAR)) == std::string::npos)
+						return "";
+
+					_partialExpression = _exp.substr(_clonePos + 1, _partialExpressionLength - _clonePos - 1);
+					_partialExpressionLength = _partialExpression.length(); //This is the original length
+					_partialExpression = _formatImplicitBrackets_Funs(_partialExpression);
+
+					if (_partialExpression.empty())
+						return "";
+
+					_exp.replace(_clonePos + 1, _partialExpressionLength, _partialExpression);
+
+					_mostInnerFunPos = CommonUtils::findRespectiveBracketPos(_exp, _clonePos, BracketTypes::REGULAR) + 1; //We need to re-find the respective position because _exp has been modified
+				}
+				else if (_exp[_mostInnerFunPos] == '?' || _exp[_mostInnerFunPos] == '>') //Those require an open bracket anyways
+					return "";
+				else if (std::isdigit(_exp[_clonePos]) || std::string(".+-efzxE").find(_exp[_clonePos]) != std::string::npos) {
+					_exp.insert(_exp.begin() + _clonePos, '(');
+					_clonePos++; //The _clonePos is now on the character directly after the open bracket of the function
+
+					if (_exp[_clonePos] == '+' || _exp[_clonePos] == '-')
+						_clonePos++;
+
+					while (_clonePos < _exp.length() && (std::isdigit(_exp[_clonePos]) || std::string(".efzxE^!%").find(_exp[_clonePos]) != std::string::npos)) {
+						_clonePos++;
+
+						if (_exp[_clonePos] == 'E' && std::string("+-").find(_exp[_clonePos + 1]) != std::string::npos)
+							_clonePos += 2; //To skip the sign
+					}
+
+					_partialExpressionLength = _clonePos; //I used this variable as a dummy variable for later
+					if (_exp[_clonePos] != '(')
+						_clonePos++; //To make the _clonePos on the character after the last character, we check for power tower.
+
+					//To include towers of expontents:
+					if (_clonePos < _exp.length() && _exp[_clonePos - 1] == '^') {
+						do {
+							if (_exp[_clonePos] == '(' && _exp[_clonePos - 1] == '^') {
+								if ((_clonePos = CommonUtils::findRespectiveBracketPos(_exp, _clonePos, BracketTypes::REGULAR)) == std::string::npos)
+									return "";
+
+								_clonePos += 2;
+							}
+							else if ((std::isdigit(_exp[_clonePos]) || std::string(".efzxE").find(_exp[_clonePos]) != std::string::npos) && _exp[_clonePos - 1] == '^') {
+								while (std::isdigit(_exp[_clonePos]) || std::string(".efzxE").find(_exp[_clonePos]) != std::string::npos)
+									_clonePos++;
+
+								_clonePos++;
+							}
+							else {
+								_clonePos--; //This is very important
+								break;
+							}
+						} while (_clonePos < _exp.length() - 1);
+
+						if (_clonePos >= _exp.length() - 1)
+							_clonePos--; //This is very important
+					}
+					else if (_clonePos - 1 == _partialExpressionLength)
+						_clonePos--; //To revert the effect of increasing it before this if statement
+
+					_exp.insert(_exp.begin() + _clonePos, ')');
+					_mostInnerFunPos = _clonePos + 1; //For the next iteration
+				}
+				else
+					return "";
+			}
+
+			return _exp;
+		}
+		
+		//This only formats nested functions
+		std::pair<std::string, ErrorCodes> _formatNestedFuns(const std::string & _exp) {
+			size_t _firstFunPos = _exp.find_first_of(_funChars);
+
+			while (_firstFunPos < _exp.length() - 1 && _funChars.find(_exp[_firstFunPos + 1]) == std::string::npos)
+				_firstFunPos = _exp.find_first_of(_funChars, _firstFunPos + 1);
+
+			if (_firstFunPos != std::string::npos && _firstFunPos < _exp.length() - 1) {
+				size_t _clonePos = _firstFunPos + 1;
+				std::pair<std::string, ErrorCodes> _partialExpressionPair;
+
+				if (std::isdigit(_exp[_clonePos]) || _funChars.find(_exp[_clonePos]) != std::string::npos || std::string(".+-(").find(_exp[_clonePos]) != std::string::npos) {
+					//Extracting _partialExpression
+					while (true) { //This will get the correct value of _clonePos to get the length of _partialExpression
+						if (_funChars.find(_exp[_clonePos]) != std::string::npos)
+							_clonePos++;
+
+						else if (_exp[_clonePos] == '(') {
+							_clonePos = CommonUtils::findRespectiveBracketPos(_exp, _clonePos, BracketTypes::REGULAR);
+
+							if (_clonePos == std::string::npos)
+								return { "", ErrorCodes::INVALID_BRACKETS }; 
+							else 
+								break;
+						}
+						
+						else if (std::isdigit(_exp[_clonePos]) || std::string(".+-").find(_exp[_clonePos]) != std::string::npos) {
+							_clonePos += CommonUtils::extractRightValue(_exp, _clonePos - 1).length() - 1;
+							break;
+						}
+
+						else
+							return { "", ErrorCodes::INVALID_FUNCTION_CALL }; 
+					}
+
+					_partialExpressionPair.first = _exp.substr(_firstFunPos + 1, _clonePos - _firstFunPos);
+					_clonePos = _partialExpressionPair.first.length(); //I needed to save the length of _partialExpression for later, so I used this variable instead of creating a new one and consume more memory :-)
+					_partialExpressionPair = _formatNestedFuns(_partialExpressionPair.first);
+
+					if (_partialExpressionPair.second != ErrorCodes::NO_ERRORS)
+						return _partialExpressionPair;
+
+					if (_funChars.find(_partialExpressionPair.first.front()) != std::string::npos)
+						_partialExpressionPair.first = '(' + _partialExpressionPair.first + ')';
+
+					std::string _result = _exp;
+					_result.replace(_firstFunPos + 1, _clonePos, _partialExpressionPair.first);
+
+					return _formatNestedFuns(_result);
+				}
+				else
+					return { "", ErrorCodes::INVALID_FUNCTION_CALL }; 
+			}
+			else
+				return { _exp, ErrorCodes::NO_ERRORS };
+		}
+
+		//To format the expression in (sum,prod)=(k,v) {x->w}
+		std::pair<std::string, ErrorCodes> _formatExperssions_SumProd(const std::string & _exp) {
+			std::pair<std::string, ErrorCodes> _resultPair = { _exp, ErrorCodes::NO_ERRORS };
+			size_t _funPos = 0, _commaPos;
+
+			while ((_funPos = _resultPair.first.find_first_of("kv", _funPos)) != std::string::npos) {
+				if (_funPos == _resultPair.first.length() - 1 || _resultPair.first[_funPos + 1] != '(')
+					return { "", ErrorCodes::INVALID_FUNCTION_CALL };
+
+				_commaPos = CommonUtils::findFirstCommaPos(_resultPair.first, _funPos + 2);
+				
+				if (_commaPos == _resultPair.first.length() - 1)
+					return { "", ErrorCodes::INVALID_FUNCTION_ARGUMENTS };
+
+				//Now the _commaPos is on the correct/first comma in the function
+				const std::string _partialExpression = _resultPair.first.substr(_funPos + 2, _commaPos - _funPos - 2);
+				std::string _partialResult;
+				
+				for (size_t i = 0; i < _partialExpression.length(); i++) {
+					if (_partialExpression[i] == 'x')
+						_partialResult += 'w';
+					else
+						_partialResult += _partialExpression[i];
+				}
+
+				_resultPair.first.replace(_funPos + 2, _partialExpression.length(), _partialResult);
+
+				_funPos++; //For the next iteration
+			}
+			
+			return _resultPair;
+		}
+
+		std::pair<std::string, ErrorCodes> _formatFunctions(const std::string & _exp, const bool & _implicitMultHighPrec) {
+			std::pair<std::string, ErrorCodes> _resultPair = { _exp, ErrorCodes::NO_ERRORS };
+
+			_replaceFunNames(_resultPair.first);
+			
+			_resultPair.first = _formatImplicitBrackets_Funs(_resultPair.first); //This method supports early exit
+
+			if (_resultPair.first.empty())
+				return { "", ErrorCodes::INVALID_FUNCTION_CALL };
+
+			_resultPair = _formatNestedFuns(_resultPair.first); //This method supports early exit
+
+			if (_resultPair.second != ErrorCodes::NO_ERRORS)
+				return _resultPair;
+
+			return _formatExperssions_SumProd(_resultPair.first);
+		}
+
+		std::pair<std::string, ErrorCodes> _formatConstants_ScientificNotation(std::string & _exp) {
+			std::random_device rd;
+			std::mt19937 gen(rd());
+			std::uniform_real_distribution<double> dist(0.0, 1.0);
+
+			const double _pi = 3.14159265358979324;
+			const double _e = 2.71828182845904524;
+			std::string _rightVal;
+			std::pair<std::string, ErrorCodes> _resultPair = { "", ErrorCodes::NO_ERRORS };
+
+			if (_exp[0] == 'E')
+				return { "", ErrorCodes::INVALID_SCIENTIFIC_NOTATION };
+
+			for (size_t i = 0; i < _exp.length(); i++) {
+				switch (_exp[i]) {
+					case 'f': { //Pi
+						_resultPair.first += CommonUtils::convertDoubleToStr(_pi, _precision, false);
+
+						if (i < _exp.length() - 1) {
+							if (std::isdigit(_exp[i + 1]) || _exp[i + 1] == '.')
+								return { "", ErrorCodes::INVALID_IMPLICIT_MULTIPLICATION };
+
+							if (_funChars.find(_exp[i + 1]) != std::string::npos) //Implicit multiplication with functions
+								_resultPair.first += '*';
+						}
+
+						break;
+					}
+					case 'e': { //Euler's number/Scientific notation
+						if (i < _exp.length() - 1 && (std::isdigit(_exp[i + 1]) || _exp[i + 1] == '.')) { //Scientific notation
+							_rightVal = CommonUtils::extractRightValue(_exp, i);
+							_resultPair.first += "10^" + _rightVal; //The multiplication sign is already inserted in _formatImplicitMultiplication
+
+							i += _rightVal.length(); //The for loop will further increase the i by 1
+						}
+						else { //Euler's number
+							_resultPair.first += CommonUtils::convertDoubleToStr(_e, _precision, false);
+
+							if (i < _exp.length() - 1 && _funChars.find(_exp[i + 1]) != std::string::npos) //Implicit multiplication with functions
+								_resultPair.first += '*';
+						}
+
+						break;
+					}
+					case 'E': { //Scientific notation
+						if (!std::isdigit(_exp[i - 1]) && std::string(").efzw").find(_exp[i - 1]) == std::string::npos)
+							return { "", ErrorCodes::INVALID_SCIENTIFIC_NOTATION };
+
+						_resultPair.first += "*10^" + _rightVal; //The multiplication sign is already inserted in _formatImplicitMultiplication
+					
+						break;
+					}
+					case 'z': { //Random number
+						_resultPair.first += CommonUtils::convertDoubleToStr(dist(gen), _precision, false);
+
+						if (i < _exp.length() - 1) {
+							if (std::isdigit(_exp[i + 1]) || _exp[i + 1] == '.')
+								return { "", ErrorCodes::INVALID_IMPLICIT_MULTIPLICATION };
+
+							if (_funChars.find(_exp[i + 1]) != std::string::npos) //Implicit multiplication with functions
+								_resultPair.first += '*';
+						}
+
+						break;
+					}
+					default: {
+						_resultPair.first += _exp[i];
+						break;
+					}
+				}	
+			}
+
+			return _resultPair;
+		}
+
+		std::pair<std::string, ErrorCodes> _formatUnaryMinus_PC(std::string & _exp) {
+			size_t _operatorPos = _exp.find_first_of("PC"), _leftOperandStartPos;
+
+			if (_operatorPos == std::string::npos)
+				return { _exp, ErrorCodes::NO_ERRORS };
+
+			if (_operatorPos == 0 || _operatorPos == _exp.length() - 1)
+				return { "", ErrorCodes::INVALID_EXPRESSION };
+			
+			do {
+				if (_exp[_operatorPos - 1] == ')') {
+					if ((_leftOperandStartPos = CommonUtils::findRespectiveBracketPos(_exp, _operatorPos - 1, BracketTypes::REGULAR)) == std::string::npos)
+						return { "", ErrorCodes::INVALID_BRACKETS };
+
+					if (_leftOperandStartPos > 0) {
+						if (_funChars.find(_exp[_leftOperandStartPos - 1]) != std::string::npos) //If it's a function call
+							_leftOperandStartPos--;
+
+						//Identifying unary minus before the left operand:
+						if (_leftOperandStartPos > 0 && _exp[_leftOperandStartPos - 1] == '-' && (_leftOperandStartPos == 1 || !(std::isdigit(_exp[_leftOperandStartPos - 2]) || std::string(").!%").find(_exp[_leftOperandStartPos - 2]) != std::string::npos))) {
+							_exp.insert(_exp.begin() + _leftOperandStartPos - 1, '(');
+							_exp.insert(_exp.begin() + ++_operatorPos, ')');
+						}
+					}
+				}
+				
+				_operatorPos += 2; //For the next iteration
+			} while ((_operatorPos = _exp.find_first_of("PC", _operatorPos)) != std::string::npos);
+
+			return { _exp, ErrorCodes::NO_ERRORS };
+		}
+
+		std::pair<std::string, ErrorCodes> _formatImplicitMultiplication(const std::string & _exp, const bool & _implicitMultHighPrec) {
 			std::string _result;
 
 			if (_implicitMultHighPrec) { //Giving higher precedence:
 				_result = _exp;
-				size_t _openBracketPos = 0, _clonePos, _partialExpressionPos, _partialExpressionLength;
-				std::string _partialExpression;
+				size_t _implicitMultCharPos = 0, _clonePos, _partialExpressionPos, _partialExpressionLength;
+				std::pair<std::string, ErrorCodes> _partialExpressionPair;
 
-				while ((_openBracketPos = _result.find('(', _openBracketPos)) != std::string::npos) {
+				while ((_implicitMultCharPos = _result.find_first_of("(efzw}ABDFGHJKLMNOQRSTUVWXYZ~@{$&_?<>kv", _implicitMultCharPos)) != std::string::npos) {
 					//Identifying implicit multiplication:
-					if (_openBracketPos > 0 && (isdigit(_result[_openBracketPos - 1]) || std::string(").").find(_result[_openBracketPos - 1]) != std::string::npos || (_result[_openBracketPos - 1] == '-' && !(isdigit(_exp[_openBracketPos - 1]) || std::string(").").find(_exp[_openBracketPos - 1]) != std::string::npos)))) {
+					if (_implicitMultCharPos > 0 && (std::isdigit(_result[_implicitMultCharPos - 1]) || std::string(").efzw").find(_result[_implicitMultCharPos - 1]) != std::string::npos || (_result[_implicitMultCharPos - 1] == '-' && !(std::isdigit(_exp[_implicitMultCharPos - 1]) || std::string(").!%").find(_exp[_implicitMultCharPos - 1]) != std::string::npos)))) {
 						//Inserting the open bracket:
-						_clonePos = _openBracketPos;
+						_clonePos = _implicitMultCharPos;
 
 						do {
 							_clonePos--;
 
 							if (_result[_clonePos] == ')') {
-								size_t _temp = CommonUtils::findRespectiveBracketPos(_result, _clonePos);
+								size_t _temp = CommonUtils::findRespectiveBracketPos(_result, _clonePos, BracketTypes::REGULAR);
 
 								if (_temp != std::string::npos)
 									_clonePos = _temp;
 								else
-									return ""; //This will cease any future processes, and force exit with _eInvalidExpression result
+									return { "", ErrorCodes::INVALID_BRACKETS };
 							}
-							else if (!isdigit(_result[_clonePos]) && std::string(".^").find(_result[_clonePos]) == std::string::npos) //DON'T PUT P&C IN THE TEMP STRING!
+							else if (!std::isdigit(_result[_clonePos]) && std::string(".^efzwE}ABDFGHJKLMNOQRSTUVWXYZ~@{$&_?<>kv!%").find(_result[_clonePos]) == std::string::npos) //DON'T PUT P&C IN THE TEMP STRING!
 								break;
 						} while (_clonePos > 0);
 
-						if (_clonePos == 0)
-							_result.insert(_result.begin(), '(');
+						//The cherry on top:
+						if (_clonePos == 0 || _result[_clonePos] != '/') {
+							_implicitMultCharPos++;
+							continue; //No need for extra brackets here
+						}
 						else
 							_result.insert(_result.begin() + _clonePos + 1, '(');
-
+						
 						//Inserting the closed bracket:
-						_clonePos = (++_openBracketPos); //Because we inserted the open bracket above, _openBracketPos shifted back by 1
+						_clonePos = (++_implicitMultCharPos); //Because we inserted the open bracket above, _implicitMultCharPos shifted back by 1
 
 						do {
 							if (_result[_clonePos] == '(') {
-								size_t _temp = CommonUtils::findRespectiveBracketPos(_result, _clonePos);
+								size_t _temp = CommonUtils::findRespectiveBracketPos(_result, _clonePos, BracketTypes::REGULAR);
 
 								if (_temp != std::string::npos) {
 									_partialExpressionPos = _clonePos + 1;
 									_clonePos = _temp;
 
-									_partialExpression = _result.substr(_partialExpressionPos, _clonePos - _partialExpressionPos);
-									_partialExpressionLength = _partialExpression.length();
-									_partialExpression = _formatImplicitMultiplication(_partialExpression, true);
+									_partialExpressionPair.first = _result.substr(_partialExpressionPos, _clonePos - _partialExpressionPos);
+									_partialExpressionLength = _partialExpressionPair.first.length();
+									_partialExpressionPair = _formatImplicitMultiplication(_partialExpressionPair.first, true);
 
-									if (_partialExpression.empty())
-										return _partialExpression; //This will cease any future processes, and force exit with _eInvalidExpression result
-
-									_result.replace(_partialExpressionPos, _clonePos - _partialExpressionPos, _partialExpression); //To format inner expressions containing implicit multiplication
-									_clonePos += 1 + _partialExpression.length() - _partialExpressionLength; //To correctly move the cursor after insertion
+									if (_partialExpressionPair.second != ErrorCodes::NO_ERRORS)
+										return _partialExpressionPair;
+									
+									_result.replace(_partialExpressionPos, _clonePos - _partialExpressionPos, _partialExpressionPair.first); //To format inner expressions containing implicit multiplication
+									_clonePos += 1 + _partialExpressionPair.first.length() - _partialExpressionLength; //To correctly move the cursor after insertion
 								}
 								else
-									return "";
+									return { "", ErrorCodes::INVALID_BRACKETS };
 							}
-							else if (isdigit(_result[_clonePos]) || std::string(".^").find(_result[_clonePos]) != std::string::npos) //DON'T PUT P&C IN THE TEMP STRING!
+							else if (std::isdigit(_result[_clonePos]) || std::string(".^efzwE}ABDFGHJKLMNOQRSTUVWXYZ~@{$&_?<>kv!%").find(_result[_clonePos]) != std::string::npos) //DON'T PUT P&C IN THE TEMP STRING!
 								_clonePos++;
 							else
 								break;
-						} while (_openBracketPos < _result.length() - 1);
+						} while (_implicitMultCharPos < _result.length() - 1);
 
 						// The _clonePos is now on the correct character
 						_result.insert(_result.begin() + _clonePos, ')');
 
-						_openBracketPos = (_clonePos += 2); //To save a fraction of a second in the find method in the upper while loop, by skiping one iteration in it
+						_implicitMultCharPos = (_clonePos += 2); //To save a fraction of a second in the find method in the upper while loop, by skiping one iteration in it
 					}
 					else
-						_openBracketPos++;
+						_implicitMultCharPos++;
 				}
 
 				return _formatImplicitMultiplication(_result, false);
 			}
 			else { //Giving normal precendence && multiplication signs
 				for (size_t i = 0; i < _exp.length(); i++) {
-					if (_exp[i] != '(')
+					if (std::string("(efzw}").find(_exp[i]) == std::string::npos && _funChars.find(_exp[i]) == std::string::npos)
 						_result += _exp[i];
-					else if (i > 0 && (isdigit(_exp[i - 1]) || std::string(").").find(_exp[i - 1]) != std::string::npos))
-						_result += "*(";
+					else if (i > 0 && (std::isdigit(_exp[i - 1]) || std::string(").efzw!%").find(_exp[i - 1]) != std::string::npos))
+						_result += std::string() + '*' + _exp[i];
 					else
-						_result += '(';
+						_result += _exp[i];
 				}
-
-				return _result;
+				
+				return { _result, ErrorCodes::NO_ERRORS };
 			}
 		}
 
-		static void _insertBrackets_PC(std::string & _exp) {
+		static void _insertBracketsWithNegatives_PC(std::string & _exp) {
 			size_t _operatorPos = 0, _clonePos;
 
 			while ((_operatorPos = _exp.find_first_of("PC", _operatorPos)) != std::string::npos) {
 				_clonePos = _operatorPos - 1;
 
 				//Inserting the open bracket:
-				while (_clonePos > 0 && (isdigit(_exp[_clonePos]) || _exp[_clonePos] == '.'))
+				while (_clonePos > 0 && (std::isdigit(_exp[_clonePos]) || _exp[_clonePos] == '.'))
 					_clonePos--;
 				
-				if (_exp[_clonePos] == '-' && (_clonePos == 0 || !(isdigit(_exp[_clonePos - 1]) || std::string(").").find(_exp[_clonePos - 1]) != std::string::npos))) {
+				if (_exp[_clonePos] == '-' && (_clonePos == 0 || !(std::isdigit(_exp[_clonePos - 1]) || std::string(").!%").find(_exp[_clonePos - 1]) != std::string::npos))) {
 					_exp.insert(_exp.begin() + _clonePos, '(');
 					_exp.insert(_exp.begin() + _operatorPos + 1, ')'); //We add 1 because of the open bracket inserted
 				
@@ -371,25 +1108,19 @@ private:
 					_operatorPos += 2; //To step after the operator found by 2 steps
 			}
 		}
-
-		static char _getMagicCharacter(const char & _operator) {
-			switch (_operator) {
-				case '^': return '`';
-				case 'P': return ';';
-				case 'C': return ':';
-			}
-		}
 		
-		static void _insertMagicCharacters(std::string & _exp) {
+		//Magic chars are inserted with functions in the evaluation process for convenience
+		ErrorCodes _insertMagicCharacters_FreeBrackets(std::string & _exp) {
 			size_t _nextOperatorPos = 0;
 			size_t _openBracketPos = 0;
 
-			while ((_nextOperatorPos = _exp.find_first_of("^PC", _nextOperatorPos)) != std::string::npos) {
+			while ((_nextOperatorPos = _exp.find_first_of("^PC!%", _nextOperatorPos)) != std::string::npos) {
 				if (_exp[_nextOperatorPos - 1] == ')' && _exp.find('(') != std::string::npos) {
-					_openBracketPos = CommonUtils::findRespectiveBracketPos(_exp, _nextOperatorPos - 1);
+					if ((_openBracketPos = CommonUtils::findRespectiveBracketPos(_exp, _nextOperatorPos - 1, BracketTypes::REGULAR)) == std::string::npos)
+						return ErrorCodes::INVALID_BRACKETS;
 
-					if (_openBracketPos == 0 || std::string("PC").find(_exp[_openBracketPos - 1]) == std::string::npos) {
-						_exp.insert(_exp.begin() + _openBracketPos, _getMagicCharacter(_exp[_nextOperatorPos]));
+					if (_openBracketPos == 0 || (_funChars.find(_exp[_openBracketPos - 1]) == std::string::npos && std::string("PC").find(_exp[_openBracketPos - 1]) == std::string::npos)) {
+						_exp.insert(_exp.begin() + _openBracketPos, CommonUtils::getMagicCharacter(_exp[_nextOperatorPos]));
 						
 						_nextOperatorPos += 2;
 					}
@@ -399,6 +1130,8 @@ private:
 				else
 					_nextOperatorPos++;
 			}
+
+			return ErrorCodes::NO_ERRORS;
 		}
 
 	public:
@@ -406,70 +1139,106 @@ private:
 			_precision = precision;
 		}
 
-		//This function early returns with "" in case of the expression is not valid
-		std::string formatExpression(const std::string & exp, const bool & implicitMultHighPrec) {
-			if (exp.empty())
-				return "0";
+		//This method is used for internal use only
+		std::pair<std::string, ErrorCodes> formatExpression(const std::string & exp, const bool & implicitMultHighPrec) {
+			if (exp == "0")
+				return { "0", ErrorCodes::NO_ERRORS };
 
-			std::string _result = exp;
+			std::pair<std::string, ErrorCodes> _resultPair = { exp, ErrorCodes::NO_ERRORS };
 			
-			//Removing spaces:
-			_result = _removeSpaces(_result);
+			_resultPair.first = _removeSpaces(_resultPair.first);
 
-			//Formatting ++/--/+-/-+:
-			_result = _collapseAddSubSigns(_result);
+			if (!_validateFunChars(_resultPair.first))
+				return { "", ErrorCodes::INVALID_EXPRESSION };
 
-			//Format decimal points:    5.+2   -->   5+2    /   5*.   -->   5*0
-			_result = _formatDecimalPoints(_result); //This method supports early exit
+			_resultPair.first = _collapseAddSubSigns(_resultPair.first);
 
-			if (_result.empty())
-				return ""; //This will cease any future processes, and force exit with _eInvalidExpression result
+			_resultPair.first = _formatDecimalPoints(_resultPair.first); //This method supports early exit
 
-			//To replace e & pi with their respective values, and format scientific notation with e
-			if (!_validatePi(_result))
-				return ""; //This will cease any future processes, and force exit with _eInvalidExpression result
+			if (_resultPair.first.empty())
+				return { "", ErrorCodes::INVALID_DECIMAL_POINTS };
+
+			_resultPair.first = _replaceAll(_resultPair.first, "pi", "f");
+			_resultPair.first = _replaceAll(_resultPair.first, "rnd#", "z");
 			
-			_result = _replaceAll(_result, "pi", 'p');
+			_resultPair = _formatAbsoluteValues(_resultPair.first); //This method supports early exit
+
+			if (_resultPair.first.empty())
+				return { "", ErrorCodes::INVALID_ABS_POLES };
+
+			_resultPair = _formatFunctions(_resultPair.first, implicitMultHighPrec); //This method supports early exit
 			
-			if (_result.find_first_of("ep") != std::string::npos)
-				_result = _formatConstantsAndScientificNotation(_result); //This method supports early exit
+			if (_resultPair.second != ErrorCodes::NO_ERRORS)
+				return _resultPair;
 
-			if (_result.empty())
-				return _result; //This will cease any future processes, and force exit with _eInvalidExpression result
+			//Formatting unary minus with brackets with PC when implicitMultHighPrec is false:
+			_resultPair = _formatUnaryMinus_PC(_resultPair.first); //This method supports early exit
 
-			_result = _formatImplicitMultiplication(_result, implicitMultHighPrec); //This method supports early exit
+			if (_resultPair.second != ErrorCodes::NO_ERRORS)
+				return _resultPair;
 
-			if (_result.empty())
-				return _result; //This will cease any future processes, and force exit with _eInvalidExpression result
+			_resultPair = _formatImplicitMultiplication(_resultPair.first, implicitMultHighPrec); //This method supports early exit
+
+			if (_resultPair.second != ErrorCodes::NO_ERRORS)
+				return _resultPair;
+
+			if (_resultPair.first.find_first_of("efzE") != std::string::npos) {
+				_resultPair = _formatConstants_ScientificNotation(_resultPair.first); //This method supports early exit
+
+				if (_resultPair.second != ErrorCodes::NO_ERRORS)
+					return _resultPair;
+			}
 
 			//Formatting loose negative numbers with P & C:
-			_insertBrackets_PC(_result);
+			_insertBracketsWithNegatives_PC(_resultPair.first);
 
-			//Inserting magic characters with "^PC" with brackets
-			_insertMagicCharacters(_result); //(^ -> `)   (P ->  ;)   (C -> :)
-
-			return _result;
+			//Inserting magic characters with "^PC!%" with brackets
+			//(^ -> `)   (P ->  ;)   (C -> :)   (! -> ')   (% -> j)
+			return { _resultPair.first, _insertMagicCharacters_FreeBrackets(_resultPair.first) }; //This method supports early exit
 		}
 	};
 
 	class ExpressionValidator {
 	private:
+		static size_t getCharCount(const std::string & _str, const char & _chr) {
+			size_t _counter = 0;
+
+			for (const char & C : _str)
+				if (C == _chr)
+					_counter++;
+
+			return _counter;
+		}
+
 		static bool _validateCharacters(const std::string & _exp) {
 			//Validating all characters:
-			std::string _allowedChars = "`;:.()+-*/^PC"; //These are the non-digit characters allowed to be in an expression
+			std::string _allowedChars = "`;:\'j.()+-*/^PCABDFGHJKLMNOQRSTUVWXYZ~@{$&_?<>kv,!%w"; //These are the non-digit characters allowed to be in an expression
 			for (const char & C : _exp)
-				if (!isdigit(C) && _allowedChars.find(C) == std::string::npos)
+				if (!std::isdigit(C) && _allowedChars.find(C) == std::string::npos)
 					return false;
 
 			//Validating first character:
-			_allowedChars = ".(+-`;:"; //These are the non-digit characters allowed to be as the first character in an expression
-			if (!isdigit(_exp.front()) && _allowedChars.find(_exp.front()) == std::string::npos)
+			_allowedChars = ".(+-`;:\'jABDFGHJKLMNOQRSTUVWXYZ~@{$&_?<>kv"; //These are the non-digit characters allowed to be as the first character in an expression
+			if (!std::isdigit(_exp.front()) && _allowedChars.find(_exp.front()) == std::string::npos)
 				return false;
 
 			//Validating last character:
-			_allowedChars = ".)"; //These are the non-digit characters allowed to be as the last character in an expression
-			if (!isdigit(_exp.back()) && _allowedChars.find(_exp.back()) == std::string::npos)
+			_allowedChars = ".)!%"; //These are the non-digit characters allowed to be as the last character in an expression
+			if (!std::isdigit(_exp.back()) && _allowedChars.find(_exp.back()) == std::string::npos)
 				return false;
+
+			return true;
+		}
+
+		static bool _validateFactorialPercentSign(const std::string & _exp) {
+			size_t _signPos = 0;
+
+			while ((_signPos = _exp.find_first_of("!%", _signPos)) != std::string::npos) {
+				if (_signPos < _exp.length() - 1 && (std::isdigit(_exp[_signPos + 1]) || _exp[_signPos + 1] == '.'))
+					return false;
+
+				_signPos++;
+			}
 
 			return true;
 		}
@@ -477,7 +1246,7 @@ private:
 		static bool _validateMagicChars(const std::string & _exp) {
 			size_t _magicCharPos = 0;
 
-			while ((_magicCharPos = _exp.find_first_of("`;:", _magicCharPos)) != std::string::npos) {
+			while ((_magicCharPos = _exp.find_first_of("`;:\'j", _magicCharPos)) != std::string::npos) {
 				if (_magicCharPos == _exp.length() - 1 || _exp[_magicCharPos + 1] != '(')
 					return false;
 
@@ -488,11 +1257,11 @@ private:
 		}
 
 		static bool _validateDecimalPoints(const std::string & _exp) {
-			size_t _posCounter = 0, _pointPos = 0;
+			size_t _pointPos = 0, _clonePos;
 
-			while ((_pointPos = _posCounter = _exp.find('.', _pointPos)) != std::string::npos) {
-				for (_posCounter; isdigit(_exp[_posCounter]) || _exp[_posCounter] == '.'; _posCounter++)
-					if (isdigit(_exp[_posCounter]) && _exp[_posCounter + 1] == '.')
+			while ((_clonePos = _pointPos = _exp.find('.', _pointPos)) != std::string::npos) {
+				for (_clonePos; std::isdigit(_exp[_clonePos]) || _exp[_clonePos] == '.'; _clonePos++)
+					if (std::isdigit(_exp[_clonePos]) && _exp[_clonePos + 1] == '.')
 						return false;
 
 				_pointPos++;
@@ -501,92 +1270,153 @@ private:
 			return true;
 		}
 
-		static bool _validateBrackets(const std::string & _exp) {
-			//Validation level 1:
-			if (_exp.find("()") != std::string::npos)
-				return false;
+		static ErrorCodes _validateMultiArgumentFuns(std::string & _partialExpression, const char & _outerFunChar = ' ') {
+			size_t _firstFunPos = _partialExpression.find_first_of("{?>kv");
+			size_t _respectiveBracketPos;
 
-			//Validation level 2:
-			size_t _firstOpenBracketPos = _exp.find('(');
-			if (_firstOpenBracketPos != std::string::npos && CommonUtils::findRespectiveBracketPos(_exp, _firstOpenBracketPos) == std::string::npos)
-				return false;
-
-			//Validation level 3:
-			for (size_t i = 0; i < _exp.length(); i++) { //DO NOT OMIT THE FIRST & LAST CHARACTERS HERE!
-				if (_exp[i] == '(' && std::string("*/^PC").find(_exp[i + 1]) != std::string::npos)
-					return false;
-
-				else if (_exp[i] == ')') {
-					if (std::string("+-*/^PC`;:").find(_exp[i - 1]) != std::string::npos)
-						return false;
-
-					if (isdigit(_exp[i + 1]) || _exp[i + 1] == '.')
-						return false;
+			if (_firstFunPos == std::string::npos) {
+				if (_outerFunChar == ' ') {
+					if (getCharCount(_partialExpression, ',') > 0)
+						return ErrorCodes::INVALID_EXPRESSION;
+					else
+						return ErrorCodes::NO_ERRORS;
 				}
-			}
 
-			return true;
+				if (_partialExpression.front() == ',' || _partialExpression.back() == ',')
+					return ErrorCodes::INVALID_FUNCTION_ARGUMENTS;
+
+				if (_outerFunChar == '{') { //log -- Can have either one comma or no commas
+					if (getCharCount(_partialExpression, ',') > 1)
+						return ErrorCodes::INVALID_FUNCTION_ARGUMENTS;
+				}
+				else if (_outerFunChar == '?' || _outerFunChar == '>') { //Must have ONE comma
+					if (getCharCount(_partialExpression, ',') != 1)
+						return ErrorCodes::INVALID_FUNCTION_ARGUMENTS;
+				}
+				else { //Must have TWO commas
+					if (getCharCount(_partialExpression, ',') != 2)
+						return ErrorCodes::INVALID_FUNCTION_ARGUMENTS;
+				}
+				
+				_partialExpression = "0";
+				return ErrorCodes::NO_ERRORS;
+			}
+			else if (_firstFunPos == _partialExpression.length() - 1)
+				return ErrorCodes::INVALID_FUNCTION_CALL;
+			else {
+				if (_partialExpression[_firstFunPos + 1] != '(')
+					return ErrorCodes::INVALID_FUNCTION_CALL;
+
+				if ((_respectiveBracketPos = CommonUtils::findRespectiveBracketPos(_partialExpression, _firstFunPos + 1, BracketTypes::REGULAR)) == std::string::npos)
+					return ErrorCodes::INVALID_BRACKETS;
+
+				std::string _subPartialExpression = _partialExpression.substr(_firstFunPos + 2, _respectiveBracketPos - _firstFunPos - 2);
+				size_t _originalSubPartialExpressionLength = _subPartialExpression.length();
+
+				ErrorCodes _subResult = _validateMultiArgumentFuns(_subPartialExpression, _partialExpression[_firstFunPos]);
+				if (_subResult != ErrorCodes::NO_ERRORS)
+					return _subResult;
+
+				_partialExpression.replace(_firstFunPos, _originalSubPartialExpressionLength + 3, _subPartialExpression);
+
+				if (_partialExpression == "0,0" || _partialExpression == "0,0,0") {
+					_partialExpression = "0";
+					return ErrorCodes::NO_ERRORS;
+				}
+
+				_subResult = _validateMultiArgumentFuns(_partialExpression, _outerFunChar);
+				if (_subResult != ErrorCodes::NO_ERRORS)
+					return _subResult;
+
+				return ErrorCodes::NO_ERRORS;
+			}
 		}
 
-		static bool _validateSequentialChars(const std::string & _exp) {
-			std::string _allowedChars = "()+-"; //These are the non-digit characters allowed to repeat sequentially
+		static ErrorCodes _validateSequentialChars(const std::string & _exp) {
+			std::string _allowedChars = "()+-!%"; //These are the non-digit characters allowed to repeat sequentially
 
 			for (size_t i = 0; i < _exp.length() - 1; i++) {
 				if (_exp[i] == _exp[i + 1]) {
-					if (!isdigit(_exp[i]) && _allowedChars.find(_exp[i]) == std::string::npos)
-						return false;
+					if (!std::isdigit(_exp[i]) && _allowedChars.find(_exp[i]) == std::string::npos) {
+						if (_exp[i] == '.')
+							return ErrorCodes::INVALID_DECIMAL_POINTS;
+						else if (_exp[i] == ',')
+							return ErrorCodes::INVALID_EXPRESSION;
+						else
+							return ErrorCodes::INVALID_OPERATOR_PLACEMENT;
+					}
 				}
 				else {
 					if (std::string("*/^PC").find(_exp[i]) != std::string::npos) {
-						if (std::string("*/^PC").find(_exp[i + 1]) != std::string::npos)
-							return false;
+						if (std::string("*/^PC!%").find(_exp[i + 1]) != std::string::npos)
+							return ErrorCodes::INVALID_OPERATOR_PLACEMENT;
 					}
-					else if ((_exp[i] == '+' || _exp[i] == '-') && std::string("*/^PC").find(_exp[i + 1]) != std::string::npos) {
-						return false;
+					else if ((_exp[i] == '+' || _exp[i] == '-') && std::string("*/^PC!%").find(_exp[i + 1]) != std::string::npos) {
+						return ErrorCodes::INVALID_OPERATOR_PLACEMENT;
 					}
 				}
 			}
 
-			return true;
+			return ErrorCodes::NO_ERRORS;
 		}
 
 	public:
-		static bool isExpressionValid(const std::string & _exp) {
-			if (_exp.empty())
-				return true; //The value is zero
+		static ErrorCodes validateExpression(const std::string & _exp) {
+			if (_exp == "0")
+				return ErrorCodes::NO_ERRORS;
 
 			if (!_validateCharacters(_exp))
-				return false;
+				return ErrorCodes::INVALID_EXPRESSION;
+
+			if (!_validateFactorialPercentSign(_exp))
+				return ErrorCodes::INVALID_IMPLICIT_MULTIPLICATION;
 
 			if (!_validateMagicChars(_exp))
-				return false;
+				return ErrorCodes::INVALID_EXPRESSION;
 			
 			if (!_validateDecimalPoints(_exp))
-				return false;
+				return ErrorCodes::INVALID_DECIMAL_POINTS;
 
-			if (!_validateBrackets(_exp))
-				return false;
+			ErrorCodes _errCode = CommonUtils::validateBrackets(_exp, BracketTypes::REGULAR);
 
-			if (!_validateSequentialChars(_exp))
-				return false;
+			if (_errCode != ErrorCodes::NO_ERRORS)
+				return _errCode;
 
-			return true;
+			std::string _temp = _exp;
+			_errCode = _validateMultiArgumentFuns(_temp);
+
+			if (_errCode != ErrorCodes::NO_ERRORS) //This is recursion-based -- It modifies the parameter
+				return _errCode;
+
+			_errCode = _validateSequentialChars(_exp);
+
+			if (_errCode != ErrorCodes::NO_ERRORS)
+				return _errCode;
+
+			return ErrorCodes::NO_ERRORS;
 		}
 	};
 
 	class ExpressionEvaluator {
 	private:
-		enEvaluationResults _evaluationResult;
+		enum ReplacementTypes { OPERATION, BRACKET };
 		short _precision;
+		double _pi;
+		ErrorCodes _evaluationResult;
+		AngleUnits _angleUnit;
+		std::string _fullExpression;
+		std::vector<std::pair<std::string, bool>> _evaluationSteps; //This will store the actual string step along with a flag to whether to keep it or not after finishing
+		std::stack<size_t> _overallOperatorPositions; //Stacks enforce nesting naturally
+		ReplacementTypes _overallReplacementType = ReplacementTypes::OPERATION; //This must be static
 
-		static bool _isNumericValue(const std::string & str) {
+		static bool _isNumericalValue(const std::string & str) {
 			size_t i = 0;
 
 			if (str.front() == '-' || str.front() == '+')
 				i++;
 
 			for (i; i < str.length(); i++)
-				if (!isdigit(str[i]) && str[i] != '.')
+				if (!std::isdigit(str[i]) && str[i] != '.')
 					return false;
 
 			return true;
@@ -601,7 +1431,7 @@ private:
 				do {
 					_clonePos++;
 					
-					while (isdigit(_partialExpression[_clonePos]) || std::string("+-.`;:").find(_partialExpression[_clonePos]) != std::string::npos)
+					while (std::isdigit(_partialExpression[_clonePos]) || std::string("+-.`;:\'j").find(_partialExpression[_clonePos]) != std::string::npos)
 						_clonePos++;
 
 					if (_partialExpression[_clonePos] == '^')
@@ -614,41 +1444,29 @@ private:
 			return _firstPos;
 		}
 
-		//This extracts the value with its sign if possible
-		static std::string _extractLeftValue(const std::string & _exp, const size_t & _operationPos) {
-			size_t _outerNumPos = _operationPos - 1;
-
-			while (_outerNumPos > 0 && (_exp[_outerNumPos] == '.' || isdigit(_exp[_outerNumPos]) || std::string("`;:").find(_exp[_outerNumPos - 1]) != std::string::npos))
-				_outerNumPos--;
-
-			if (std::string("`;:*/^PC").find(_exp[_outerNumPos]) != std::string::npos || (std::string("+-").find(_exp[_outerNumPos]) != std::string::npos && std::string("^PC").find(_exp[_operationPos]) != std::string::npos))
-				_outerNumPos++;
-
-			return _exp.substr(_outerNumPos, _operationPos - _outerNumPos);
-		}
-
 		//With brackets -- This avoids the need to collapse signs after insertion
-		void _insertSubPartialResult(std::string & _partialExpression, const size_t & _openBracketPos, const size_t & _closedBracketPos, const double & _subPartialResult) {
+		//This doesn't deal with magic chars when normal evaluatiot. But when recording steps, we must handle them externally
+		void _insertSubPartialResult(std::string & _partialExpression, const size_t & _openBracketPos, const size_t & _subPartialExpLength, const double & _subPartialResult) {
 			if (_openBracketPos > 0) { //If the expression doesn't start with the open bracket
 				if (_partialExpression[_openBracketPos - 1] == '+') //If the character before the open bracket is a positive sign
-					_partialExpression.replace(_openBracketPos - 1, _closedBracketPos + 3, CommonUtils::convertDoubleToStr(_subPartialResult, _precision));
+					_partialExpression.replace(_openBracketPos - 1, _subPartialExpLength + 3, CommonUtils::convertDoubleToStr(_subPartialResult, _precision));
 				else if (_partialExpression[_openBracketPos - 1] == '-') { //If the character before the open bracket is a negative sign
 					if (_subPartialResult >= 0) //If the result is positive or zero
-						_partialExpression.replace(_openBracketPos, _closedBracketPos + 2, CommonUtils::convertDoubleToStr(_subPartialResult, _precision, false));
+						_partialExpression.replace(_openBracketPos, _subPartialExpLength + 2, CommonUtils::convertDoubleToStr(_subPartialResult, _precision, false));
 					else //If the result is negative
-						_partialExpression.replace(_openBracketPos - 1, _closedBracketPos + 3, CommonUtils::convertDoubleToStr(-_subPartialResult, _precision));
+						_partialExpression.replace(_openBracketPos - 1, _subPartialExpLength + 3, CommonUtils::convertDoubleToStr(-_subPartialResult, _precision));
 				}
 				else //For any other character types before the open bracket
-					_partialExpression.replace(_openBracketPos, _closedBracketPos + 2, CommonUtils::convertDoubleToStr(_subPartialResult, _precision));
+					_partialExpression.replace(_openBracketPos, _subPartialExpLength + 2, CommonUtils::convertDoubleToStr(_subPartialResult, _precision));
 			}
 			else //If the expression starts with the open bracket
-				_partialExpression.replace(0, _closedBracketPos + 2, CommonUtils::convertDoubleToStr(_subPartialResult, _precision));
+				_partialExpression.replace(0, _subPartialExpLength + 2, CommonUtils::convertDoubleToStr(_subPartialResult, _precision));
 		}
 
 		//Without brackets -- This avoids the need to collapse signs after insertion
 		void _insertSubPartialResult(std::string & _partialExpression, const size_t & _operationPos, const std::string & _num1, const std::string & _num2, const double & _subPartialResult) {
 			if (_operationPos > _num1.length()) { //If the expression doesn't start with _num1
-				if (std::string("`;:").find(_partialExpression[_operationPos - _num1.length() - 1]) != std::string::npos) { //If there's a magic character directly before _num1
+				if (std::string("`;:\'j").find(_partialExpression[_operationPos - _num1.length() - 1]) != std::string::npos) { //If there's a magic character directly before _num1
 					if (_operationPos - _num1.length() >= 2) { //If there is a character before the magic character
 						if (_partialExpression[_operationPos - _num1.length() - 2] == '+') //If there's a positive sign before the magic character
 							_partialExpression.replace(_operationPos - _num1.length() - 2, _num1.length() + _num2.length() + 3, CommonUtils::convertDoubleToStr(_subPartialResult, _precision));
@@ -666,28 +1484,72 @@ private:
 				}
 				else { //If there's not a magic character directly before _num1
 					if (_num1.front() == '+' || _num1.front() == '-') { //If _num1 was extracted with the sign
-						if (_num1.front() == '-') { //If _num1 is negative
-							if (_subPartialResult >= 0) //If the result is positive
+						if (std::string("*/+-").find(_partialExpression[_operationPos]) != std::string::npos) //If the operation is +-*/
+							_partialExpression.replace(_operationPos -_num1.length(), _num1.length() + _num2.length() + 1, CommonUtils::convertDoubleToStr(_subPartialResult, _precision));
+						else { //If the operation is other than +-*/
+							if (_num1.front() == '-') { //If _num1 is negative
+								if (_subPartialResult >= 0) //If the result is positive
+									_partialExpression.replace(_operationPos - _num1.length(), _num1.length() + _num2.length() + 1, CommonUtils::convertDoubleToStr(_subPartialResult, _precision));
+								else //If the result is negative
+									_partialExpression.replace(_operationPos - _num1.length(), _num1.length() + _num2.length() + 1, CommonUtils::convertDoubleToStr(-_subPartialResult, _precision));
+							}
+							else //If _num1 is positive
 								_partialExpression.replace(_operationPos - _num1.length(), _num1.length() + _num2.length() + 1, CommonUtils::convertDoubleToStr(_subPartialResult, _precision));
-							else //If the result is negative
-								_partialExpression.replace(_operationPos - _num1.length(), _num1.length() + _num2.length() + 1, CommonUtils::convertDoubleToStr(-_subPartialResult, _precision));
 						}
-						else //If _num1 is positive
+					}
+					else { //If _num1 was extracted without the sign: ^PC with no magic chars or another reason. The result will always be positive here.
+						if (_partialExpression[_operationPos - _num1.length() - 1] == '+' || _partialExpression[_operationPos - _num1.length() - 1] == '-') //If there's +- before _num1 -- Keep in mind that the result will always be positive here.
+							_partialExpression.replace(_operationPos - _num1.length(), _num1.length() + _num2.length() + 1, CommonUtils::convertDoubleToStr(_subPartialResult, _precision, false));
+						else //For any other character before _num1
 							_partialExpression.replace(_operationPos - _num1.length(), _num1.length() + _num2.length() + 1, CommonUtils::convertDoubleToStr(_subPartialResult, _precision));
 					}
-					else //If _num1 was extracted without the sign -- If the operation was ^PC (The _subParialResult will be always positive here)
-						_partialExpression.replace(_operationPos - _num1.length(), _num1.length() + _num2.length() + 1, CommonUtils::convertDoubleToStr(_subPartialResult, _precision, false));
 				}
 			}
 			else //If the expression starts with _num1
 				_partialExpression.replace(0, _num1.length() + _num2.length() + 1, CommonUtils::convertDoubleToStr(_subPartialResult, _precision));
 		}
 
-		bool _isWhole(const double & d) {
+		//With function calls with evaluation steps -- This avoids the need to collapse signs after insertion
+		void _insertSubPartialResult_funs(std::string & _partialExpression, const size_t & _openBracketPos, const size_t & _subPartialExpLength, const double & _subPartialResult) {
+			if (_openBracketPos > 1) { //If _partialExpression doesn't start with the function call
+				if (_partialExpression[_openBracketPos - 2] == '+') //We will also replace the positive sign
+					_partialExpression.replace(_openBracketPos - 2, _subPartialExpLength + 4, CommonUtils::convertDoubleToStr(_subPartialResult, _precision));
+				else if (_partialExpression[_openBracketPos - 2] == '-') {
+					if (_subPartialResult >= 0) //We will keep the negative sign, and insert the result without the positive sign
+						_partialExpression.replace(_openBracketPos - 1, _subPartialExpLength + 3, CommonUtils::convertDoubleToStr(_subPartialResult, _precision, false));
+					else //We will replace the negative sign, and insert the result with a positive sign
+						_partialExpression.replace(_openBracketPos - 2, _subPartialExpLength + 4, CommonUtils::convertDoubleToStr(-_subPartialResult, _precision));
+				}
+				else //For any other character before the function call
+					_partialExpression.replace(_openBracketPos - 1, _subPartialExpLength + 3, CommonUtils::convertDoubleToStr(_subPartialResult, _precision));
+			}
+			else //If _partialExpression starts with the function call
+				_partialExpression.replace(0, _subPartialExpLength + 3, CommonUtils::convertDoubleToStr(_subPartialResult, _precision)); //We must keep the sign to be consistent with _evaluationSteps
+		}
+
+		static bool _isWhole(const double & d) {
 			return std::floor(d) == d;
 		}
 
-		double _factorial(double n) {
+		double _convertToRadian(const double & _angle) {
+			switch (_angleUnit) {
+				case AngleUnits::RADIAN: return _angle;
+				case AngleUnits::DEGREE: return _angle * _pi / 180.0;
+				case AngleUnits::GRADIAN: return _angle * _pi / 200.0;
+				return 0;
+			}
+		}
+
+		double _convertFromRadian(const double & _angle) {
+			switch (_angleUnit) {
+				case AngleUnits::RADIAN: return _angle;
+				case AngleUnits::DEGREE: return _angle * 180.0 / _pi;
+				case AngleUnits::GRADIAN: return _angle * 200.0 / _pi;
+				default: return 0;
+			}
+		}
+
+		static double _factorial(double n) {
 			double _result = 1;
 
 			for (n; n > 1; n--)
@@ -696,7 +1558,7 @@ private:
 			return _result;
 		}
 
-		double _permutations(const double & _num1, const double & _num2) {
+		static double _permutations(const double & _num1, const double & _num2) {
 			double result = 1;
 
 			for (int i = 0; i < _num2; i++)
@@ -705,7 +1567,7 @@ private:
 			return result;
 		}
 
-		double _combinations(const double & _num1, const double & _num2) {
+		static double _combinations(const double & _num1, const double & _num2) {
 			double result = 1;
 
 			for (int i = 1; i <= _num2; i++) {
@@ -716,99 +1578,707 @@ private:
 			return result;
 		}
 
-		double _calculate(const double & _num1, const double & _num2, const char & _operation) {
+		//0 -> 0.5pi    1 -> 1.0pi
+		bool _inDomain_trigFuns(double _val, const bool & _b) {
+			while (_val >= 2 * _pi)
+				_val -= 2 * _pi;
+			
+			while (_val < 0)
+				_val += 2 * _pi;
+
+			double _tenPower = std::pow(10, _precision);
+			return _b ? (_val > 0 && static_cast<size_t>(_val * _tenPower) != static_cast<size_t>(_pi * _tenPower)) : (static_cast<size_t>(_val * _tenPower) != static_cast<size_t>((_pi / 2) * _tenPower) && static_cast<size_t>(_val * _tenPower) != static_cast<size_t>((3 * _pi / 2) * _tenPower));
+		}
+
+		//This avoids the need to collapse signs after plugging in
+		std::string _plugInVal(const std::string & _exp, const double & _val) {
+			std::string _result;
+
+			if (_exp.front() == 'w')
+				_result += CommonUtils::convertDoubleToStr(_val, _precision);
+			else
+				_result += _exp.front();
+
+			for (size_t i = 1; i < _exp.length(); i++) {
+				if (_exp[i] == 'w') {
+					if (_exp[i - 1] == '+') {
+						_result.pop_back();
+						_result += CommonUtils::convertDoubleToStr(_val, _precision);
+					}
+					else if (_exp[i - 1] == '-') {
+						if (_val >= 0)
+							_result += CommonUtils::convertDoubleToStr(_val, _precision, false);
+						else {
+							_result.pop_back();
+							_result += CommonUtils::convertDoubleToStr(-_val, _precision);
+						}
+					}
+					else
+						_result += CommonUtils::convertDoubleToStr(_val, _precision);
+				}
+				else
+					_result += _exp[i];
+			}
+
+			return _result;
+		}
+
+		double _sum(const std::string & _exp, double & _firstLimit, const double & _secondLimit) {
+			double _result = 0;
+			std::string _intermediateExp;
+
+			for (_firstLimit; _firstLimit <= _secondLimit; _firstLimit++) {
+				_intermediateExp = _plugInVal(_exp, _firstLimit);
+				_result += _evaluatePartial(_intermediateExp, false);
+
+				if (_evaluationResult != ErrorCodes::NO_ERRORS)
+					return 0;
+			}
+
+			return _result;
+		}
+
+		double _prod(const std::string & _exp, double & _firstLimit, const double & _secondLimit) {
+			double _result = 1;
+			std::string _intermediateExp;
+
+			for (_firstLimit; _firstLimit <= _secondLimit; _firstLimit++) {
+				_intermediateExp = _plugInVal(_exp, _firstLimit);
+				_result *= _evaluatePartial(_intermediateExp, false);
+
+				if (_evaluationResult != ErrorCodes::NO_ERRORS)
+					return 0;
+			}
+
+			return _result;
+		}
+
+		//For one-argument functions:
+		double _calculateOneArgument(const double & _val, const char & _funChar) {
+			if (_evaluationResult != ErrorCodes::NO_ERRORS)
+				return 0;
+			
 			double _result = 0;
 
-			switch (_operation) {
-				case '+':
-					_result = _num1 + _num2;
+			switch (_funChar) {
+				case 'A': { //asinh
+					_result = std::asinh(_val);
 					break;
-				case '-':
-					_result = _num1 - _num2;
-					break;
-				case '*':
-					_result = _num1 * _num2;
-					break;
-				case '/':
-					if (_num2 == 0) {
-						_evaluationResult = enEvaluationResults::eCannotDivideByZero; //This will cease any future processes, and force exit with eCannotDivideByZero result
-						return 0; //This is important to skip the OutOfRange validation below
-					}
-
-					_result = _num1 / _num2;
-					break;
-				case '^':
-					if (_num1 == 0 && _num2 == 0) {
-						_evaluationResult = enEvaluationResults::eInvalidExponentiation; //This will cease any future processes, and force exit with eInvalidExponentiation result
+				}
+				case 'B': { //acosh
+					if (_val < 1) {
+						_evaluationResult = ErrorCodes::OUT_OF_DOMAIN_ACOSH;
 						return 0;
 					}
 
-					_result = pow(_num1, _num2);
+					_result = std::acosh(_val);
 					break;
-				case 'P':
-					if (_num1 < 0 || _num2 < 0 || !_isWhole(_num1) || !_isWhole(_num2) || _num2 > _num1) {
-						_evaluationResult = enEvaluationResults::eInvalidPermutationsOperands; //This will cease any future processes, and force exit with eInvalidPermutationsOperands result
+				}
+				case 'D': { //atanh
+					if (_val <= -1 || _val >= 1) {
+						_evaluationResult = ErrorCodes::OUT_OF_DOMAIN_ATANH;
 						return 0;
 					}
 
-					_result = _permutations(_num1, _num2);
+					_result = std::atanh(_val);
 					break;
-				case 'C':
-					if (_num1 < 0 || _num2 < 0 || !_isWhole(_num1) || !_isWhole(_num2) || _num2 > _num1) {
-						_evaluationResult = enEvaluationResults::eInvalidCombinationsOperands; //This will cease any future processes, and force exit with eInvalidCombinationsOperands result
+				}
+				case 'F': { //acsch
+					if (_val == 0) {
+						_evaluationResult = ErrorCodes::OUT_OF_DOMAIN_ACSCH;
 						return 0;
 					}
 
-					_result = _combinations(_num1, _num2);
+					_result = std::asinh(1 / _val);
 					break;
+				}
+				case 'G': { //asech
+					if (_val > 1 || _val <= 0) {
+						_evaluationResult = ErrorCodes::OUT_OF_DOMAIN_ASECH;
+						return 0;
+					}
+
+					_result = std::acosh(1 / _val);
+					break;
+				}
+				case 'H': { //acoth
+					if (_val >= -1 && _val <= 1) {
+						_evaluationResult = ErrorCodes::OUT_OF_DOMAIN_ACOTH;
+						return 0;
+					}
+
+					_result = std::atanh(1 / _val);
+					break;
+				}
+				case 'J': { //sinh
+					_result = std::sinh(_val);
+					break;
+				}
+				case 'K': { //cosh
+					_result = std::cosh(_val);
+					break;
+				}
+				case 'L': { //tanh
+					_result = std::tanh(_val);
+					break;
+				}
+				case 'M': { //csch
+					if (_val == 0) {
+						_evaluationResult = ErrorCodes::OUT_OF_DOMAIN_CSCH;
+						return 0;
+					}
+
+					_result = 1 / std::sinh(_val);
+					break;
+				}
+				case 'N': { //sech
+					_result = 1 / std::cosh(_val);
+					break;
+				}
+				case 'O': { //coth
+					if (_val == 0) {
+						_evaluationResult = ErrorCodes::OUT_OF_DOMAIN_COTH;
+						return 0;
+					}
+
+					_result = 1 / std::tanh(_val);
+					break;
+				}
+				case 'Q': { //asin
+					if (_val < -1 || _val > 1) {
+						_evaluationResult = ErrorCodes::OUT_OF_DOMAIN_ASIN;
+						return 0;
+					}
+
+					_result = _convertFromRadian(std::asin(_val));
+					break;
+				}
+				case 'R': { //acos
+					if (_val < -1 || _val > 1) {
+						_evaluationResult = ErrorCodes::OUT_OF_DOMAIN_ACOS;
+						return 0;
+					}
+
+					_result = _convertFromRadian(std::acos(_val));
+					break;
+				}
+				case 'S': { //atan
+					_result = _convertFromRadian(std::atan(_val));
+					break;
+				}
+				case 'T': { //acsc
+					if (_val > -1 && _val < 1) {
+						_evaluationResult = ErrorCodes::OUT_OF_DOMAIN_ACSC;
+						return 0;
+					}
+
+					_result = _convertFromRadian(std::asin(1 / _val));
+					break;
+				}
+				case 'U': { //asec
+					if (_val > -1 && _val < 1) {
+						_evaluationResult = ErrorCodes::OUT_OF_DOMAIN_ASEC;
+						return 0;
+					}
+
+					_result = _convertFromRadian(std::acos(1 / _val));
+					break;
+				}
+				case 'V': { //acot
+					if (_val == 0) {
+						_evaluationResult = ErrorCodes::OUT_OF_DOMAIN_ACOT;
+						return 0;
+					}
+
+					_result = _convertFromRadian(std::atan(1 / _val));
+					break;
+				}
+				case 'W': { //sin
+					_result = std::sin(_val);
+					break;
+				}
+				case 'X': { //cos
+					_result = std::cos(_val);
+					break;
+				}
+				case 'Y': { //tan
+					if (!_inDomain_trigFuns(_val, 0)) {
+						_evaluationResult = ErrorCodes::OUT_OF_DOMAIN_TAN;
+						return 0;
+					}
+
+					_result = std::tan(_val);
+					break;
+				}
+				case 'Z': { //csc
+					if (!_inDomain_trigFuns(_val, 1)) {
+						_evaluationResult = ErrorCodes::OUT_OF_DOMAIN_CSC;
+						return 0;
+					}
+
+					_result = 1 / std::sin(_val);
+					break;
+				}
+				case '~': { //sec
+					if (!_inDomain_trigFuns(_val, 0)) {
+						_evaluationResult = ErrorCodes::OUT_OF_DOMAIN_SEC;
+						return 0;
+					}
+
+					_result = 1 / std::cos(_val);
+					break;
+				}
+				case '@': { //cot
+					if (!_inDomain_trigFuns(_val, 1)) {
+						_evaluationResult = ErrorCodes::OUT_OF_DOMAIN_COT;
+						return 0;
+					}
+
+					_result = 1 / std::tan(_val);
+					break;
+				}
+				case '{': { //log10
+					if (_val <= 0) {
+						_evaluationResult = ErrorCodes::OUT_OF_DOMAIN_LOG10;
+						return 0;
+					}
+
+					_result = std::log10(_val);
+					break;
+				}
+				case '$': { //ln
+					if (_val <= 0) {
+						_evaluationResult = ErrorCodes::OUT_OF_DOMAIN_LN;
+						return 0;
+					}
+
+					_result = std::log(_val);
+					break;
+				}
+				case '&': { //sqrt
+					if (_val < 0) {
+						_evaluationResult = ErrorCodes::OUT_OF_DOMAIN_SQRT;
+						return 0;
+					}
+
+					_result = std::sqrt(_val);
+					break;
+				}
+				case '_': { //cbrt
+					_result = std::cbrt(_val);
+					break;
+				}
+				case '<': { //abs
+					_result = std::fabs(_val);
+					break;
+				}
+				case '!': { //factorial
+					if (_val < 0 || !_isWhole(_val)) {
+						_evaluationResult = ErrorCodes::INVALID_FACTORIAL_INPUT;
+						return 0;
+					}
+
+					_result = _factorial(_val);
+					break;
+				}
+				case '%': { //percent
+					_result = _val * 0.01;
+					break;
+				}
 			}
 
 			if (_result == INFINITY || _result == -INFINITY) {
-				_evaluationResult = enEvaluationResults::eEvaluationOutOfRange; //This will cease any future processes, and force exit with eEvaluationOutOfRange result
+				_evaluationResult = ErrorCodes::EVALUATION_OVERFLOW;
 				return 0;
 			}
-			else if (isnan(_result)) {
-				_evaluationResult = enEvaluationResults::eInvalidExponentiation; //This will cease any future processes, and force exit with eInvalidExponentiation result
+			
+			return _result == 0 ? 0 : _result; //To normalize -0.0
+		}
+
+		//For two-argument functions:
+		double _calculateTwoArgument(double _val1, double _val2, const char & _funChar) {
+			if (_evaluationResult != ErrorCodes::NO_ERRORS)
+				return 0;
+
+			double _result = 0;
+
+			switch (_funChar) {
+				case '{': { //log
+					if (_val2 <= 0 || _val1 <= 0 || _val1 == 1) {
+						_evaluationResult = ErrorCodes::OUT_OF_DOMAIN_LOG;
+						return 0;
+					}
+
+					_result = std::log(_val2) / std::log(_val1);
+					break;
+				}
+				case '?': { //nthrt
+					if (_val2 == 0 || (_isWhole(_val2) && _val1 < 0 && static_cast<long>(_val2) % 2 == 0)) {
+						_evaluationResult = ErrorCodes::OUT_OF_DOMAIN_NTHRT;
+						return 0;
+					}
+
+					_result = std::pow(_val1, 1.0 / _val2);
+					break;
+				}
+				case '>': { //rndInt
+					if (_val1 > _val2)
+						std::swap(_val1, _val2);
+
+					std::random_device rd;
+					std::mt19937 gen(rd());
+
+					std::uniform_int_distribution<long> dist(static_cast<long>(_val1), static_cast<long>(_val2));
+					_result = dist(gen);
+					break;
+				}
+			}
+
+			//I don't know if this even is possible, but just in case.
+			if (_result == INFINITY || _result == -INFINITY) {
+				_evaluationResult = ErrorCodes::EVALUATION_OVERFLOW;
 				return 0;
 			}
 
 			return _result == 0 ? 0 : _result; //To normalize -0.0
 		}
 
-		double _evaluatePartial(std::string & _partialExpression) {
-			if (_evaluationResult != enEvaluationResults::eNoErrors)
+		//For three-argument functions:
+		double _calculateThreeArgument(const std::string & _exp, double & _firstLimit, const double & _secondLimit, const char & _funChar) {
+			double _result = 0;
+
+			switch (_funChar) {
+				case 'k': { //sum
+					if (!_isWhole(_firstLimit) || !_isWhole(_secondLimit) || _firstLimit > _secondLimit) {
+						_evaluationResult = ErrorCodes::INVALID_SUM_LIMITS;
+						return 0;
+					}
+
+					_result = _sum(_exp, _firstLimit, _secondLimit);
+					break;
+				}
+				case 'v': { //prod
+					if (!_isWhole(_firstLimit) || !_isWhole(_secondLimit) || _firstLimit > _secondLimit) {
+						_evaluationResult = ErrorCodes::INVALID_PROD_LIMITS;
+						return 0;
+					}
+
+					_result = _prod(_exp, _firstLimit, _secondLimit);
+					break;
+				}
+			}
+
+			if (_evaluationResult != ErrorCodes::NO_ERRORS)
 				return 0;
 
-			if (_partialExpression.empty())
+			if (_result == INFINITY || _result == -INFINITY) {
+				_evaluationResult = ErrorCodes::EVALUATION_OVERFLOW;
+				return 0;
+			}
+
+			return _result;
+		}
+
+		//For regular operations
+		double _calculate(const double & _num1, const double & _num2, const char & _operation) {
+			double _result = 0;
+
+			switch (_operation) {
+				case '+': {
+					_result = _num1 + _num2;
+					break;
+				}
+				case '-': {
+					_result = _num1 - _num2;
+					break;
+				}
+				case '*': {
+					_result = _num1 * _num2;
+					break;
+				}
+				case '/': {
+					if (_num2 == 0) {
+						_evaluationResult = ErrorCodes::CANNOT_DIVIDE_BY_ZERO;
+						return 0;
+					}
+
+					_result = _num1 / _num2;
+					break;
+				}
+				case '^': {
+					if (_num1 == 0 && _num2 == 0) {
+						_evaluationResult = ErrorCodes::INVALID_EXPONENTIATION;
+						return 0;
+					}
+
+					_result = pow(_num1, _num2);
+					break;
+				}
+				case 'P': {
+					if (_num1 < 0 || _num2 < 0 || !_isWhole(_num1) || !_isWhole(_num2) || _num2 > _num1) {
+						_evaluationResult = ErrorCodes::INVALID_PERMUTATIONS_OPERANDS;
+						return 0;
+					}
+
+					_result = _permutations(_num1, _num2);
+					break;
+				}
+				case 'C': {
+					if (_num1 < 0 || _num2 < 0 || !_isWhole(_num1) || !_isWhole(_num2) || _num2 > _num1) {
+						_evaluationResult = ErrorCodes::INVALID_COMBINATIONS_OPERANDS;
+						return 0;
+					}
+
+					_result = _combinations(_num1, _num2);
+					break;
+				}
+			}
+
+			if (_result == INFINITY || _result == -INFINITY) {
+				_evaluationResult = ErrorCodes::EVALUATION_OVERFLOW;
+				return 0;
+			}
+			else if (isnan(_result)) {
+				_evaluationResult = ErrorCodes::INVALID_EXPONENTIATION;
+				return 0;
+			}
+
+			return _result == 0 ? 0 : _result; //To normalize -0.0
+		}
+
+		static bool _doesExpContainOneOp(const std::string & _exp) {
+			std::string _operations = "+-!%*/^PC`;:\'j";
+			std::string _funChars = "ABDFGHJKLMNOQRSTUVWXYZ~@{$&_?<>kv";
+			bool _hasFound = false;
+			size_t i = 0;
+
+			if ((_exp.front() == '+' || _exp.front() == '-') && i < _exp.length() - 1 && std::string("`;:\'j").find(_exp[i + 1]) == std::string::npos)
+				i++;
+
+			for (i; i < _exp.length(); i++) {
+				if (_operations.find(_exp[i]) != std::string::npos || _funChars.find(_exp[i]) != std::string::npos || (i > 0 && _exp[i] == '(' && _funChars.find(_exp[i - 1]) == std::string::npos)) {
+					if (i < _exp.length() - 1) {
+						if (std::string("`;:\'j").find(_exp[i]) != std::string::npos && (_exp[i + 1] == '+' || _exp[i + 1] == '-')) { //Skip the magic character and the sign after it
+							i++;
+							continue;
+						}
+						
+						if (std::string("*/^PC").find(_exp[i]) != std::string::npos && (_exp[i + 1] == '+' || _exp[i + 1] == '-')) //Skip the sign after it but not the actual operation
+							i++;
+					}
+
+					if (_hasFound)
+						return false;
+					else
+						_hasFound = true;
+				}
+			}
+
+			return true;
+		}
+
+		double _evaluatePartial(std::string & _partialExpression, const bool & _recordSteps, const bool & _funCall = false) {
+			if (_evaluationResult != ErrorCodes::NO_ERRORS) //Force exit
 				return 0;
 
-			if (_isNumericValue(_partialExpression)) {
+			if (_isNumericalValue(_partialExpression)) { //Recursion limit
 				double _val = stod(_partialExpression);
 				return _val == 0 ? 0 : _val; //To normalize -0.0
 			}
 			
 			double _subPartialResult = 0;
-			size_t _operatorPos;
 
-			//Brackets:
-			if ((_operatorPos = _partialExpression.find('(')) != std::string::npos) {
-				size_t _lastPos = CommonUtils::findRespectiveBracketPos(_partialExpression, _operatorPos); //Closed Bracket
-				std::string _subPartialExpression = _partialExpression.substr(_operatorPos + 1, _lastPos - _operatorPos - 1);
+			//Free Brackets (No functions):
+			size_t _operatorPos = 0;
+			static std::string _funChars = "ABDFGHJKLMNOQRSTUVWXYZ~@{$&_?<>kv";
 
-				_lastPos = _subPartialExpression.length(); //I needed to save the length of the sub-partial expression for later, so I used this variable instead of creating a new one and consume more memory :-)
-				_subPartialResult = _evaluatePartial(_subPartialExpression);
+			while (true) {
+				while ((_operatorPos = _partialExpression.find('(', _operatorPos)) != std::string::npos && _operatorPos > 0 && _funChars.find(_partialExpression[_operatorPos - 1]) != std::string::npos)
+					_operatorPos++;
 
-				_insertSubPartialResult(_partialExpression, _operatorPos, _lastPos, _subPartialResult);
+				if (_operatorPos == std::string::npos)
+					break;
 
-				return _evaluatePartial(_partialExpression);
+				else {
+					size_t _closedBracketPos = CommonUtils::findRespectiveBracketPos(_partialExpression, _operatorPos, BracketTypes::REGULAR);
+					std::string _subPartialExpression = _partialExpression.substr(_operatorPos + 1, _closedBracketPos - _operatorPos - 1);
+
+					if (_subPartialExpression.find('w') != std::string::npos)
+						_operatorPos++;
+
+					else { //Actual evaluation:
+						if (_recordSteps)
+							_overallOperatorPositions.push(_overallOperatorPositions.top() + _operatorPos + 1);
+
+						_closedBracketPos = _subPartialExpression.length(); //I needed to save the length of _subPartialExpression for later, so I used this variable instead of creating a new one and consume more memory :-)
+
+						const bool _updateLastExp = _isNumericalValue(_subPartialExpression); //Because _evaluatePartial will not touch _evaluationSteps in case of _subPartialResult is a numerical value, we will update it here explicity
+
+						if (_recordSteps)
+							_subPartialResult = _evaluatePartial(_subPartialExpression, _recordSteps, _overallOperatorPositions.top() != std::string::npos && _overallOperatorPositions.top() > 0 && _funChars.find(_evaluationSteps.back().first[_overallOperatorPositions.top() - 1]) != std::string::npos);
+						else
+							_subPartialResult = _evaluatePartial(_subPartialExpression, false);
+
+						_insertSubPartialResult(_partialExpression, _operatorPos, _closedBracketPos, _subPartialResult);
+
+						if (_recordSteps && _evaluationResult == ErrorCodes::NO_ERRORS && _overallOperatorPositions.size() > 1) {
+							std::string _lastExp = _evaluationSteps.back().first;
+							_subPartialExpression = _lastExp.substr(_overallOperatorPositions.top() + 1, CommonUtils::findRespectiveBracketPos(_lastExp, _overallOperatorPositions.top(), BracketTypes::REGULAR) - _overallOperatorPositions.top() - 1);
+
+							//We don't need to check the evaluation result here, because the bracket contains only one value -- To also deal with redundant brackets:
+							if (_updateLastExp || _isNumericalValue(_subPartialExpression)) { //We must re-check that for specific cases
+								_insertSubPartialResult(_lastExp, _overallOperatorPositions.top(), _subPartialExpression.length(), _subPartialResult);
+								_evaluationSteps.push_back({ _lastExp, false }); //To not show this redundant step in the final vector, but still be consistent with the internal processes
+								_overallOperatorPositions.pop(); //To return to the previous level of nesting
+							}
+						}
+
+						if (_recordSteps)
+							return _evaluatePartial(_partialExpression, _recordSteps, _overallOperatorPositions.top() != std::string::npos && _overallOperatorPositions.top() > 0 && _funChars.find(_evaluationSteps.back().first[_overallOperatorPositions.top() - 1]) != std::string::npos);
+						else
+							return _evaluatePartial(_partialExpression, false);
+					}
+				}
+			}
+
+			//Functions:
+			if ((_operatorPos = _partialExpression.find_first_of(_funChars)) != std::string::npos) {
+				size_t _closedBracketPos = CommonUtils::findRespectiveBracketPos(_partialExpression, _operatorPos + 1, BracketTypes::REGULAR);
+
+				if (_recordSteps)
+					_overallOperatorPositions.push(_overallOperatorPositions.top() + _operatorPos + 2); //To stand on the open bracket of the function
+
+				//To insert magic characters with ^PC!% before the function call
+				if (_closedBracketPos < _partialExpression.length() - 1 && std::string("^PC!%").find(_partialExpression[_closedBracketPos + 1]) != std::string::npos) {
+					_partialExpression.insert(_partialExpression.begin() + _operatorPos, CommonUtils::getMagicCharacter(_partialExpression[_closedBracketPos + 1]));
+					
+					if (_recordSteps) { //To update the _partialExpression
+						_evaluationSteps.back().first.insert(_evaluationSteps.back().first.begin() + _overallOperatorPositions.top() - 1, CommonUtils::getMagicCharacter(_evaluationSteps.back().first[CommonUtils::findRespectiveBracketPos(_evaluationSteps.back().first, _overallOperatorPositions.top(), BracketTypes::REGULAR) + 1]));
+						_overallOperatorPositions.top()++; //Because the positions are shifted
+					}
+
+					//Because the positions are shifted:
+					_operatorPos++;
+					_closedBracketPos++;
+				}
+
+				std::string _subPartialExpression = _partialExpression.substr(_operatorPos + 2, _closedBracketPos - _operatorPos - 2);
+				_closedBracketPos = _subPartialExpression.length(); //I needed to save the length of _subPartialExpression for later, so I used this variable instead of creating a new one and consume more memory :-)
+
+				//Trigonometric functions:
+				if (std::string("WXYZ~@").find(_partialExpression[_operatorPos]) != std::string::npos)
+					_subPartialResult = _calculateOneArgument(_convertToRadian(_evaluatePartial(_subPartialExpression, _recordSteps, true)), _partialExpression[_operatorPos]);
+
+				//Two-argument functions (nthrt,ranInt,log):
+				else if (std::string("?>{").find(_partialExpression[_operatorPos]) != std::string::npos) {
+					size_t _commaPos = CommonUtils::findFirstCommaPos(_subPartialExpression);
+					
+					//One-argument log:
+					if (_commaPos == std::string::npos)
+						_subPartialResult = _calculateOneArgument(_evaluatePartial(_subPartialExpression, _recordSteps, true), _partialExpression[_operatorPos]);
+
+					//Two-argument log + nthrt & ranInt:
+					else {
+						std::string _leftExpression = _subPartialExpression.substr(0, _commaPos);
+						std::string _rightExpression = _subPartialExpression.substr(_commaPos + 1);
+
+						double _leftExpressionResult = _evaluatePartial(_leftExpression, _recordSteps, true);
+						if (_evaluationResult != ErrorCodes::NO_ERRORS)
+							return 0;
+						if (_recordSteps)
+							_overallOperatorPositions.top() += _leftExpression.length() + 1;
+						
+						double _rightExpressionResult = _evaluatePartial(_rightExpression, _recordSteps, true);
+						if (_evaluationResult != ErrorCodes::NO_ERRORS)
+							return 0;
+						if (_recordSteps)
+							_overallOperatorPositions.top() -= _leftExpression.length() + 1;
+
+						_subPartialResult = _calculateTwoArgument(_leftExpressionResult, _rightExpressionResult, _partialExpression[_operatorPos]);
+					}
+				}
+
+				//Three-argument functions (sum,prod):
+				else if (std::string("kv").find(_partialExpression[_operatorPos]) != std::string::npos) {
+					size_t _commasPos[2];
+
+					_commasPos[0] = CommonUtils::findFirstCommaPos(_subPartialExpression);
+					_commasPos[1] = CommonUtils::findFirstCommaPos(_subPartialExpression, _commasPos[0] + 1);
+
+					std::string _leftExpression = _subPartialExpression.substr(0, _commasPos[0]);
+					std::string _middleExpression = _subPartialExpression.substr(_commasPos[0] + 1, _commasPos[1] - _commasPos[0] - 1);
+					std::string _rightExpression = _subPartialExpression.substr(_commasPos[1] + 1, _subPartialExpression.length() - _commasPos[1] - 1);
+					
+					if (_recordSteps)
+						_overallOperatorPositions.top() += _leftExpression.length() + 1;
+					double _middleExpressionResult = _evaluatePartial(_middleExpression, _recordSteps, true);
+					if (_evaluationResult != ErrorCodes::NO_ERRORS)
+						return 0;
+
+					if (_recordSteps)
+						_overallOperatorPositions.top() += _middleExpression.length() + 1;
+					double _rightExpressionResult = _evaluatePartial(_rightExpression, _recordSteps, true);
+					if (_evaluationResult != ErrorCodes::NO_ERRORS)
+						return 0;
+
+					if (_recordSteps)
+						_overallOperatorPositions.top() -= _leftExpression.length() + _middleExpression.length() + 2;
+
+					_subPartialResult = _calculateThreeArgument(_leftExpression, _middleExpressionResult, _rightExpressionResult, _partialExpression[_operatorPos]);
+				}
+
+				//Other functions
+				else
+					_subPartialResult = _calculateOneArgument(_evaluatePartial(_subPartialExpression, _recordSteps, true), _partialExpression[_operatorPos]);
+				
+				_insertSubPartialResult_funs(_partialExpression, _operatorPos + 1, _closedBracketPos, _subPartialResult);
+
+				if (_recordSteps && _evaluationResult == ErrorCodes::NO_ERRORS) { //We must re-extract _subPartialExpression from _lastExp because there might be incosistencies
+					std::string _lastExp = _evaluationSteps.back().first;
+					_subPartialExpression = _lastExp.substr(_overallOperatorPositions.top() + 1, CommonUtils::findRespectiveBracketPos(_lastExp, _overallOperatorPositions.top(), BracketTypes::REGULAR) - _overallOperatorPositions.top() - 1);
+					_insertSubPartialResult_funs(_lastExp, _overallOperatorPositions.top(), _subPartialExpression.length(), _subPartialResult);
+
+					_evaluationSteps.push_back({ _lastExp, true });
+					_overallOperatorPositions.pop();
+				}
+
+				if (_recordSteps)
+					return _evaluatePartial(_partialExpression, _recordSteps, _overallOperatorPositions.top() != std::string::npos && _overallOperatorPositions.top() > 0 && _funChars.find(_evaluationSteps.back().first[_overallOperatorPositions.top() - 1]) != std::string::npos);
+				else
+					return _evaluatePartial(_partialExpression, _recordSteps);
+			}
+
+			//Factorials/Percent
+			if ((_operatorPos = _partialExpression.find_first_of("!%")) != std::string::npos) {
+				if (_recordSteps)
+					_overallOperatorPositions.push(_overallOperatorPositions.top() + _operatorPos + 1);
+
+				std::string _num = CommonUtils::extractLeftValue(_partialExpression, _operatorPos); //This will extract the value with the sign, unless there's no magic chars
+
+				_subPartialResult = _calculateOneArgument(stod(_num), _partialExpression[_operatorPos]);
+
+				_insertSubPartialResult(_partialExpression, _operatorPos, _num, "", _subPartialResult);
+
+				if (_recordSteps && _evaluationResult == ErrorCodes::NO_ERRORS) {
+					std::string _lastExp = _evaluationSteps.back().first;
+					_insertSubPartialResult(_lastExp, _overallOperatorPositions.top(), _num, "", _subPartialResult);
+					_evaluationSteps.push_back({ _lastExp, true });
+					_overallOperatorPositions.pop(); //To return to the previous level of nesting
+				}
+
+				if (_recordSteps)
+					return _evaluatePartial(_partialExpression, _recordSteps, _overallOperatorPositions.top() != std::string::npos && _overallOperatorPositions.top() > 0 && _funChars.find(_evaluationSteps.back().first[_overallOperatorPositions.top() - 1]) != std::string::npos);
+				else
+					return _evaluatePartial(_partialExpression, _recordSteps);
 			}
 
 			//Exponents:
-			if (_partialExpression.find('^') != std::string::npos)
+			else if (_partialExpression.find('^') != std::string::npos)
 				_operatorPos = _findCorrectExponentPos(_partialExpression); //Because 2^3^4 = 2^(3^4) NOT (2^3)^4
 
 			//Permutations/Combinations:
-			else _operatorPos = _partialExpression.find_first_of("PC");
+			if (_operatorPos == std::string::npos)
+				_operatorPos = _partialExpression.find_first_of("PC");
 
 			//Multiplication/Division:
 			if (_operatorPos == std::string::npos) //BE CAREFUL NOT TO ADD `else`
@@ -822,8 +2292,19 @@ private:
 					_operatorPos = _partialExpression.find_first_of("+-");
 			}
 
+			if (_recordSteps) {
+				_overallReplacementType = _doesExpContainOneOp(_partialExpression) ? ReplacementTypes::BRACKET : ReplacementTypes::OPERATION;
+				
+				//If dealing with a two-argument function:
+				if (_overallOperatorPositions.top() < _evaluationSteps.back().first.length() && _evaluationSteps.back().first[_overallOperatorPositions.top()] == ',')
+					_overallReplacementType = ReplacementTypes::OPERATION; //To use the correct _insertSubPartialResult method
+				
+				if (_overallReplacementType == ReplacementTypes::OPERATION)
+					_overallOperatorPositions.push(_overallOperatorPositions.top() + _operatorPos + 1);
+			}
+
 			//Extracting _num1:
-			std::string _num1 = _extractLeftValue(_partialExpression, _operatorPos);
+			std::string _num1 = CommonUtils::extractLeftValue(_partialExpression, _operatorPos); //This will extract the value with the sign, unless it's ^PC with no magic chars
 
 			//Extracting _num2:
 			std::string _num2 = CommonUtils::extractRightValue(_partialExpression, _operatorPos);
@@ -832,19 +2313,67 @@ private:
 
 			_insertSubPartialResult(_partialExpression, _operatorPos, _num1, _num2, _subPartialResult);
 
-			return _evaluatePartial(_partialExpression);
+			if (_recordSteps && _evaluationResult == ErrorCodes::NO_ERRORS) {
+				std::string _lastExp = _evaluationSteps.back().first;
+
+				if (_overallOperatorPositions.size() > 1) {
+					if (_overallReplacementType == ReplacementTypes::BRACKET) {
+						if (_funCall) //If it is a function call, we keep the brackets.
+							_lastExp.replace(_overallOperatorPositions.top() + 1, _num1.length() + _num2.length() + (std::string("`;:\'j").find(_lastExp[_overallOperatorPositions.top() + 1]) != std::string::npos ? 2 : 1), CommonUtils::convertDoubleToStr(_subPartialResult, _precision)); //We must keep the sign to be consistent with _partialExpression because it'll be the vallue of _subPartialExpression later
+						else
+							_insertSubPartialResult(_lastExp, _overallOperatorPositions.top(), _num1.length() + _num2.length() + (std::string("`;:\'j").find(_lastExp[_overallOperatorPositions.top() + 1]) != std::string::npos ? 2 : 1), _subPartialResult);
+					}
+					else
+						_insertSubPartialResult(_lastExp, _overallOperatorPositions.top(), _num1, _num2, _subPartialResult);
+				}
+				else
+					_lastExp = _partialExpression;
+
+				_evaluationSteps.push_back({ _lastExp, true });
+
+				if (_overallOperatorPositions.size() > 1 && !(_funCall && _overallReplacementType == ReplacementTypes::BRACKET)) //If it is a function call, we don't pop just yet.
+					_overallOperatorPositions.pop(); //To return to the previous level of nesting
+			}
+
+			if (_recordSteps)
+				return _evaluatePartial(_partialExpression, _recordSteps, _overallOperatorPositions.top() != std::string::npos && _overallOperatorPositions.top() > 0 && _funChars.find(_evaluationSteps.back().first[_overallOperatorPositions.top() - 1]) != std::string::npos);
+			else
+				return _evaluatePartial(_partialExpression, _recordSteps);
 		}
 
 	public:
-		ExpressionEvaluator(const short & precision) {
-			_evaluationResult = enEvaluationResults::eNoErrors;
+		ExpressionEvaluator(const short & precision, const AngleUnits & angleUnit, const std::string & fullExpression) {
+			_evaluationResult = ErrorCodes::NO_ERRORS;
 			_precision = precision;
+			_angleUnit = angleUnit;
+			_fullExpression = fullExpression;
+			_overallOperatorPositions.push(std::string::npos);
+
+			std::ostringstream _oss;
+			_oss << std::fixed << std::setprecision(_precision) << 3.14159265358979324;
+			_pi = stod(_oss.str()); //To be consistent with inner calculations
 		}
 
-		Result initiateEvaluation(std::string _fullExpression) {
-			double _value = _evaluatePartial(_fullExpression);
-			
-			return { _value == 0 ? 0 : _value, _evaluationResult }; //To normalize -0.0
+		EvaluationResult initiateEvaluation() {			
+			return { _evaluatePartial(_fullExpression, false, false), _evaluationResult };
+		}
+
+		std::vector<std::string> getEvaluationSteps(const bool & forceDecimalPoints, const bool & forceAsterisks, const bool & useAbsPoles, const bool & useSpaces) {
+			_evaluationSteps.push_back({ _fullExpression, true });
+
+			_evaluatePartial(_fullExpression, true, false);
+
+			if (!_evaluationSteps.back().second && _evaluationResult == ErrorCodes::NO_ERRORS)
+				_evaluationSteps.back().second = true;
+
+			std::vector<std::string> _finalResult;
+
+			//To format all the non-redundant steps, and store them cleanly in _finalResult:
+			for (const auto & Exp : _evaluationSteps)
+				if (Exp.second)
+					_finalResult.push_back(CommonUtils::formatExpression(Exp.first, forceDecimalPoints, forceAsterisks, useAbsPoles, useSpaces));
+
+			return _finalResult;
 		}
 	};
 
@@ -859,38 +2388,98 @@ private:
 	}
 
 public:
-	ExpressionParser(const std::string & expression = "0", const short & precision = 6) {
-		_expression = expression;
+	ExpressionParser(const std::string & expression = "0", const short & precision = 6, const AngleUnits & angleUnit = AngleUnits::RADIAN, const bool & implicitMultHighPrec = false) {
+		_implicitMultHighPrec = implicitMultHighPrec;
 		_precision = _clampNumberBetween(precision, 0, 17);
+		_angleUnit = angleUnit;
+
+		setExpression(expression);
 	}
 
 	std::string getExpression() const {
 		return _expression;
 	}
 
+	//* If an empty string is passed, it will be turned into "0"
 	void setExpression(const std::string & expression) {
-		_expression = expression;
+		_expression = expression == "" ? "0" : expression;
+
+		if (_expression != "0") {
+			_formattingResult = ExpressionFormatter(_precision).formatExpression(_expression, _implicitMultHighPrec);
+
+			if (_formattingResult.second == ErrorCodes::NO_ERRORS) { //If the format succeeded
+				_formattingResult.second = ExpressionValidator::validateExpression(_formattingResult.first);
+
+				if (_formattingResult.second != ErrorCodes::NO_ERRORS)
+					_formattingResult.first = "";
+			}
+		}
 	}
 	
 	short getPrecision() const {
 		return _precision;
 	}
 
-	//* This controls the precision of the result as well as the internal calculations.
-	//* Default value is 6 digits after the decimal point
+	//* This controls the precision of the results, internal calculations, and formatted expressions.
 	//* It will get clamped between [0,17]
+	//* Default value: 6 digits after the decimal point
 	void setPrecision(const short & precision) {
 		_precision = _clampNumberBetween(precision, 0, 17);
+
+		//To refresh the formatted expression:
+		if ((_expression.find('e') != std::string::npos || _expression.find("pi") != std::string::npos || _expression.find("rnd#") != std::string::npos) && _formattingResult.second == ErrorCodes::NO_ERRORS)
+			_formattingResult = ExpressionFormatter(_precision).formatExpression(_expression, _implicitMultHighPrec);
 	}
 
-	//* The parameter controls whether implicit multiplication (juxtaposition) binds more tightly than standard left-to-right evaluation.
-	//* If true, it will have higher precedence. Otherwise, it will not.
-	Result evaluate(const bool implicitMultHighPrec) {
-		std::string _formattedExpression = ExpressionFormatter(_precision).formatExpression(_expression, implicitMultHighPrec);
-
-		if (!_formattedExpression.empty() && ExpressionValidator::isExpressionValid(_formattedExpression))
-			return ExpressionEvaluator(_precision).initiateEvaluation(_formattedExpression);
-
-		return { 0, enEvaluationResults::eInvalidExpression };
+	AngleUnits getAngleUnit() const {
+		return _angleUnit;
 	}
+
+	//* This is used when calculating trigonometric functions.
+	//* Default value: RADIAN.
+	void setAngleUnit(const AngleUnits & angleUnit) {
+		_angleUnit = angleUnit;
+	}
+
+	bool getImplicitMultHighPrec() const {
+		return _implicitMultHighPrec;
+	}
+
+	//* This controls whether implicit multiplication (juxtaposition) binds more tightly than standard left-to-right evaluation.
+	//* If true, it will have high precedence over division. Otherwise, it will not.
+	//* This doesn't affect functions with implicit brackets, they have their own rules.
+	//* Defualt value: false
+	void setImplicitMultHighPrec(const bool & implicitMultHighPrec) {
+		_implicitMultHighPrec = implicitMultHighPrec;
+
+		//To refresh the formatted expression
+		if (_formattingResult.second == ErrorCodes::NO_ERRORS)
+			_formattingResult = ExpressionFormatter(_precision).formatExpression(_expression, _implicitMultHighPrec);
+	}
+	
+	//* This will return a struct, containing the value and the evaluation result (error code).
+	EvaluationResult evaluate() const {
+		if (_formattingResult.second != ErrorCodes::NO_ERRORS)
+			return { 0, _formattingResult.second };
+
+		return ExpressionEvaluator(_precision, _angleUnit, _formattingResult.first).initiateEvaluation();
+	}
+
+	//* This method will return an empty string, should the expression be invalid.
+	std::string formatExpression(const bool & forceDecimalPoints, const bool & forceAsterisks, const bool & useAbsPoles, const bool & useSpaces) const {
+		if (_formattingResult.second != ErrorCodes::NO_ERRORS)
+			return "";
+
+		return CommonUtils::formatExpression(_formattingResult.first, forceDecimalPoints, forceAsterisks, useAbsPoles, useSpaces);
+	}
+
+	//* This method will return an empty vector, should the expression be invalid.
+	//* If a calculation goes wrong (i.e sqrt(-2)), the vector will stop at the last successful step.
+	std::vector<std::string> generateEvaluationSteps(const bool & forceDecimalPoints, const bool & forceAsterisks, const bool & useAbsPoles, const bool & useSpaces) const {
+		if (_formattingResult.second != ErrorCodes::NO_ERRORS)
+			return {};
+
+		return ExpressionEvaluator(_precision, _angleUnit, _formattingResult.first).getEvaluationSteps(forceDecimalPoints, forceAsterisks, useAbsPoles, useSpaces);
+	}
+
 };
