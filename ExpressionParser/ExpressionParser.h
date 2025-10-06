@@ -2560,7 +2560,6 @@ public:
 		_forceBitwiseLogic = forceBitwiseLogic;
 		_angleUnit = angleUnit;
 		_precision = _clampNumberBetween(precision, 0, 17);
-		//DON'T FORGET TO CHANGE THE FOR LOOPS WITH ITERATORS
 		_operatorNames = {
 			{'A', "asinh"}, {'B', "acosh"}, {'D', "atanh"}, {'F', "acsch"}, {'G', "asech"}, {'H', "acoth"}, {'J', "sinh"},
 			{'K', "cosh"}, {'L', "tanh"}, {'M', "csch"}, {'N', "sech"}, {'O', "coth"}, {'Q', "asin"}, {'R', "acos"},
