@@ -2402,7 +2402,7 @@ private:
 					_searchFrom++;
 
 				//The validation below is special only for +- because they can follow any other operator directly
-				//We will check only for logical operators because they are what remains at this point
+				//We will check only for logical/bitwise shift operators because they are what remain at this point
 				do {
 					_operatorPos = _partialExpression.find_first_of("+-", _searchFrom);
 					_searchFrom += _operatorPos + 1;
@@ -2421,7 +2421,7 @@ private:
 			if (_operatorPos == std::string::npos)
 				_operatorPos = _partialExpression.find_first_of("bp");;
 
-			//Other Logic Gates:
+			//OR,NOR,XOR,XNOR Logic Gates:
 			if (_operatorPos == std::string::npos)
 				_operatorPos = _partialExpression.find_first_of("udlr");
 
