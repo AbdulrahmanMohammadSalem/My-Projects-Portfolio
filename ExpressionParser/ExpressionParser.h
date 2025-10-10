@@ -30,7 +30,7 @@ public:
 	enum ErrorCodes : short {
 		NO_ERRORS, INVALID_EXPRESSION, INVALID_IMPLICIT_MULTIPLICATION, INVALID_DECIMAL_POINTS, INVALID_BRACKETS,
 		INVALID_SCIENTIFIC_NOTATION, INVALID_OPERATOR_PLACEMENT, INVALID_FUNCTION_ARGUMENTS, INVALID_FUNCTION_CALL,
-		INVALID_ABS_POLES, CANNOT_DIVIDE_BY_ZERO, INVALID_EXPONENTIATION, EVALUATION_OUT_OF_RANGE, INVALID_PERMUTATIONS_OPERANDS,
+		INVALID_ABS_BARS, CANNOT_DIVIDE_BY_ZERO, INVALID_EXPONENTIATION, EVALUATION_OUT_OF_RANGE, INVALID_PERMUTATIONS_OPERANDS,
 		INVALID_COMBINATIONS_OPERANDS, INVALID_BITWISE_LEFT_SHIFT_OPERANDS, INVALID_BITWISE_RIGHT_SHIFT_OPERANDS,
 		INVALID_BITWISE_NOT_OPERAND, INVALID_BITWISE_XNOR_OPERANDS, INVALID_BITWISE_NAND_OPERANDS, INVALID_BITWISE_NOR_OPERANDS,
 		INVALID_BITWISE_XOR_OPERANDS, INVALID_BITWISE_AND_OPERANDS, INVALID_BITWISE_OR_OPERANDS, OUT_OF_DOMAIN_ACOSH,
@@ -270,7 +270,7 @@ private:
 		}
 
 		//This method is used for internal use to format each evaluation step.
-		static std::string formatExpression(const std::string & _exp, const std::unordered_map<char, std::string> & _operatorNames, const bool _forceDecimalPoints, const bool _forceAsterisks, const bool _useAbsPoles, const bool _useSpaces) {
+		static std::string formatExpression(const std::string & _exp, const std::unordered_map<char, std::string> & _operatorNames, const bool _forceDecimalPoints, const bool _forceAsterisks, const bool _useAbsBars, const bool _useSpaces) {
 			const std::string _funChars = "ABDFGHJKLMNOQRSTUVWXYZ~@{$&_?}\"\\ qonkvh", _magicChars = "`;:\'j", _twoOperandOperators = "*/^PCiygmubdlpr<=>"; //We will not put <=> because they are standalone (they are not associated with a string)
 			std::string _result, _substr;
 			size_t _substrLength;
@@ -284,7 +284,7 @@ private:
 					else if (_exp[i + 1] == '-') {
 						_substr = extractRightValue(_exp, i + 1); //This will NOT extract the negative sign.
 						_substrLength = _substr.length();
-						_substr = formatExpression(_substr, _operatorNames, _forceDecimalPoints, _forceAsterisks, _useAbsPoles, _useSpaces);
+						_substr = formatExpression(_substr, _operatorNames, _forceDecimalPoints, _forceAsterisks, _useAbsBars, _useSpaces);
 						_result += "(-" + _substr + ')'; //We add the negative sign here.
 
 						i += _substrLength + 1;
@@ -322,7 +322,7 @@ private:
 					if (i > 0 && i < _exp.length() - 1 && _twoOperandOperators.find(_exp[i - 1]) != std::string::npos && (std::isdigit(_exp[i + 1]) || _exp[i + 1] == '.')) {
 						_substr = extractRightValue(_exp, i); //This will NOT extract the negative sign.
 						_substrLength = _substr.length();
-						_substr = formatExpression(_substr, _operatorNames, _forceDecimalPoints, _forceAsterisks, _useAbsPoles, _useSpaces);
+						_substr = formatExpression(_substr, _operatorNames, _forceDecimalPoints, _forceAsterisks, _useAbsBars, _useSpaces);
 						_result += "(-" + _substr + ')'; //We add the negative sign here.
 
 						i += _substrLength;
@@ -375,7 +375,7 @@ private:
 				}
 
 				else if (_exp[i] == '}') { //Absolute value
-					if (_useAbsPoles) {
+					if (_useAbsBars) {
 						_substr = _exp.substr(i + 2, findRespectiveBracketPos(_exp, i + 1, BracketTypes::REGULAR) - i - 2);
 						_substrLength = _substr.length();
 						_substr = formatExpression(_substr, _operatorNames, _forceDecimalPoints, _forceAsterisks, true, _useSpaces);
@@ -580,7 +580,7 @@ private:
 		static std::pair<std::string, ErrorCodes> _bruteForceAmbiguousPoles(std::string _exp, const std::vector<size_t> & _vPositions, const size_t _ambiguousIndex) {
 			if (_ambiguousIndex == _vPositions.size()) { //No more poles
 				if (CommonUtils::validateBrackets(_exp, BracketTypes::SQUARE) == ErrorCodes::INVALID_BRACKETS)
-					return { "", ErrorCodes::INVALID_ABS_POLES };
+					return { "", ErrorCodes::INVALID_ABS_BARS };
 
 				return { _exp, ErrorCodes::NO_ERRORS };
 			}
@@ -609,7 +609,7 @@ private:
 				return { _exp, ErrorCodes::NO_ERRORS };
 
 			if (CommonUtils::getCharCount(_exp, '|') % 2) //If odd
-				return { _exp, ErrorCodes::INVALID_ABS_POLES };
+				return { _exp, ErrorCodes::INVALID_ABS_BARS };
 
 			const std::string _forbiddenChars = "*/^PCiygmubdlpr<=>,";
 
@@ -635,7 +635,7 @@ private:
 
 				else if (_forbiddenChars.find(_exp[i + 1]) != std::string::npos) { //Must NOT be opened
 					if (_exp[i - 1] == '[')
-						return { "", ErrorCodes::INVALID_ABS_POLES };
+						return { "", ErrorCodes::INVALID_ABS_BARS };
 					else
 						_exp[i] = ']'; //We would have already checked "Must NOT be closed";
 				}
@@ -1177,7 +1177,7 @@ private:
 			_resultPair = _formatAbsoluteValues(_resultPair.first); //This method supports early exit
 
 			if (_resultPair.first.empty())
-				return { "", ErrorCodes::INVALID_ABS_POLES };
+				return { "", ErrorCodes::INVALID_ABS_BARS };
 
 			_resultPair = _formatFunctions(_resultPair.first, implicitMultHighPrec); //This method supports early exit
 
@@ -2413,7 +2413,7 @@ private:
 			if (_operatorPos == std::string::npos)
 				_operatorPos = _partialExpression.find_first_of("iy");
 
-			//Logical Operators:
+			//Comparison Operators:
 			if (_operatorPos == std::string::npos)
 				_operatorPos = _partialExpression.find_first_of("gm<=>");
 
@@ -2476,7 +2476,7 @@ private:
 
 	public:
 		ExpressionEvaluator(const short precision, const AngleUnits angleUnit, const bool forceBitwiseLogic, const std::string & fullExpression = "0") {
-			_reset();
+			reset();
 			_precision = precision;
 			_angleUnit = angleUnit;
 			_forceBitwiseLogic = forceBitwiseLogic;
@@ -2487,7 +2487,7 @@ private:
 			_pi = stod(_oss.str()); //To be consistent with inner calculations
 		}
 
-		void _reset() {
+		void reset() {
 			_evaluationResult = ErrorCodes::NO_ERRORS;
 
 			if (!_evaluationSteps.empty())
@@ -2504,13 +2504,10 @@ private:
 		}
 
 		EvaluationResult initiateEvaluation() {
-			const EvaluationResult _result = { _evaluatePartial(_fullExpression, false, false) , _evaluationResult };
-			
-			_reset();
-			return _result;
+			return { _evaluatePartial(_fullExpression, false, false) , _evaluationResult };
 		}
 
-		std::vector<std::string> getEvaluationSteps(const std::unordered_map<char, std::string> & operatorNames, const bool forceDecimalPoints, const bool forceAsterisks, const bool useAbsPoles, const bool useSpaces) {
+		std::vector<std::string> getEvaluationSteps(const std::unordered_map<char, std::string> & operatorNames, const bool forceDecimalPoints, const bool forceAsterisks, const bool useAbsBars, const bool useSpaces) {
 			_evaluationSteps.push_back({ _fullExpression, true });
 
 			_evaluatePartial(_fullExpression, true, false);
@@ -2523,9 +2520,8 @@ private:
 			//To format all the non-redundant steps, and store them cleanly in _finalResult:
 			for (const auto & Exp : _evaluationSteps)
 				if (Exp.second)
-					_finalResult.push_back(CommonUtils::formatExpression(Exp.first, operatorNames, forceDecimalPoints, forceAsterisks, useAbsPoles, useSpaces));
+					_finalResult.push_back(CommonUtils::formatExpression(Exp.first, operatorNames, forceDecimalPoints, forceAsterisks, useAbsBars, useSpaces));
 
-			_reset();
 			return _finalResult;
 		}
 	};
@@ -2552,6 +2548,24 @@ private:
 			return "";
 
 		return _formatting_result.first;
+	}
+
+	std::vector<double> _getValuesFromRange(double _startValue, const double _endValue, const double _step) {
+		if (_step == 0 || (_startValue < _endValue && _step < 0) || (_startValue > _endValue && _step > 0))
+			return {};
+
+		std::vector<double> _values;
+
+		if (_step > 0) { //We will increase startValue until endValue
+			for (_startValue; _startValue <= _endValue; _startValue += _step)
+				_values.push_back(_startValue);
+		}
+		else { //We will decrease startValue until endValue
+			for (_startValue; _startValue >= _endValue; _startValue += _step)
+				_values.push_back(_startValue);
+		}
+
+		return _values;
 	}
 
 public:
@@ -2612,7 +2626,7 @@ public:
 		return _angleUnit;
 	}
 
-	//* This is used when calculating trigonometric functions.
+	//* This is used when calculating trigonometric and inverse trigonometric functions.
 	//* Default value: RADIAN.
 	void setAngleUnit(const AngleUnits angleUnit) {
 		_angleUnit = angleUnit;
@@ -2655,20 +2669,20 @@ public:
 	}
 
 	//* This method will return an empty string, should the expression be invalid.
-	std::string formatExpression(const bool forceDecimalPoints, const bool forceAsterisks, const bool useAbsPoles, const bool useSpaces) const {
+	std::string formatExpression(const bool forceDecimalPoints, const bool forceAsterisks, const bool useAbsBars, const bool useSpaces) const {
 		if (_formattingResult.second != ErrorCodes::NO_ERRORS)
 			return "";
 
-		return CommonUtils::formatExpression(_formattingResult.first, _operatorNames, forceDecimalPoints, forceAsterisks, useAbsPoles, useSpaces);
+		return CommonUtils::formatExpression(_formattingResult.first, _operatorNames, forceDecimalPoints, forceAsterisks, useAbsBars, useSpaces);
 	}
 
 	//* This method will return an empty vector, should the expression be invalid.
 	//* If a calculation goes wrong (i.e sqrt(-2)), the vector will stop at the last successful step.
-	std::vector<std::string> generateEvaluationSteps(const bool forceDecimalPoints, const bool forceAsterisks, const bool useAbsPoles, const bool useSpaces) const {
+	std::vector<std::string> generateEvaluationSteps(const bool forceDecimalPoints, const bool forceAsterisks, const bool useAbsBars, const bool useSpaces) const {
 		if (_formattingResult.second != ErrorCodes::NO_ERRORS)
 			return {};
 
-		return ExpressionEvaluator(_precision, _angleUnit, _forceBitwiseLogic, _formattingResult.first).getEvaluationSteps(_operatorNames, forceDecimalPoints, forceAsterisks, useAbsPoles, useSpaces);
+		return ExpressionEvaluator(_precision, _angleUnit, _forceBitwiseLogic, _formattingResult.first).getEvaluationSteps(_operatorNames, forceDecimalPoints, forceAsterisks, useAbsBars, useSpaces);
 	}
 
 	//* The expression should be a function of x
@@ -2706,6 +2720,7 @@ public:
 		for (const double V : values) {
 			_evaluator.setFullExpression(CommonUtils::plugInVal(_formatting_result.first, V, _precision));
 			_vResult.push_back(_evaluator.initiateEvaluation());
+			_evaluator.reset();
 		}
 
 		return _vResult;
@@ -2713,18 +2728,29 @@ public:
 
 	//* The expression should be a function of x
 	//* This method will substitute in the expression and return the result
-	std::vector<std::string> generateEvaluationStepsAt(const double value, const bool forceDecimalPoints, const bool forceAsterisks, const bool useAbsPoles, const bool useSpaces) {
+	std::vector<EvaluationResult> evaluateAt(double startValue, const double endValue, const double step) {
+		std::vector<double> _values = _getValuesFromRange(startValue, endValue, step);
+
+		if (_values.empty())
+			return {};
+
+		return evaluateAt(_values);
+	}
+
+	//* The expression should be a function of x
+	//* This method will substitute in the expression and return the result
+	std::vector<std::string> generateEvaluationStepsAt(const double value, const bool forceDecimalPoints, const bool forceAsterisks, const bool useAbsBars, const bool useSpaces) {
 		std::string _validating_result = _validate_ReturningVector();
 		
 		if (_validating_result == "")
 			return {};
 
-		return ExpressionEvaluator(_precision, _angleUnit, _forceBitwiseLogic, CommonUtils::plugInVal(_validating_result, value, _precision)).getEvaluationSteps(_operatorNames, forceDecimalPoints, forceAsterisks, useAbsPoles, useSpaces);
+		return ExpressionEvaluator(_precision, _angleUnit, _forceBitwiseLogic, CommonUtils::plugInVal(_validating_result, value, _precision)).getEvaluationSteps(_operatorNames, forceDecimalPoints, forceAsterisks, useAbsBars, useSpaces);
 	}
 
 	//* The expression should be a function of x
 	//* This method will substitute in the expression and return the result
-	std::vector<std::vector<std::string>> generateEvaluationStepsAt(const std::vector<double> & values, const bool forceDecimalPoints, const bool forceAsterisks, const bool useAbsPoles, const bool useSpaces) {
+	std::vector<std::vector<std::string>> generateEvaluationStepsAt(const std::vector<double> & values, const bool forceDecimalPoints, const bool forceAsterisks, const bool useAbsBars, const bool useSpaces) {
 		std::string _expAfterValidation = _validate_ReturningVector();
 
 		if (_expAfterValidation == "")
@@ -2735,10 +2761,23 @@ public:
 
 		for (const double V : values) {
 			_evaluator.setFullExpression(CommonUtils::plugInVal(_expAfterValidation, V, _precision));
-			_vResult.push_back(_evaluator.getEvaluationSteps(_operatorNames, forceDecimalPoints, forceAsterisks, useAbsPoles, useSpaces));
+			_vResult.push_back(_evaluator.getEvaluationSteps(_operatorNames, forceDecimalPoints, forceAsterisks, useAbsBars, useSpaces));
+			_evaluator.reset();
 		}
 
 		return _vResult;
+	}
+
+	
+	//* The expression should be a function of x
+	//* This method will substitute in the expression and return the result
+	std::vector<std::vector<std::string>> generateEvaluationStepsAt(const double startValue, const double endValue, const double step, const bool forceDecimalPoints, const bool forceAsterisks, const bool useAbsBars, const bool useSpaces) {
+		std::vector<double> _values = _getValuesFromRange(startValue, endValue, step);
+
+		if (_values.empty())
+			return {};
+
+		return generateEvaluationStepsAt(_values, forceDecimalPoints, forceAsterisks, useAbsBars, useSpaces);
 	}
 
 };
