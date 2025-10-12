@@ -525,7 +525,7 @@ private:
 
 			for (size_t i = 1; i < _exp.length() - 1; i++) {
 				if (_exp[i] == '.') {
-					if (std::string("efzx)!%").find(_exp[i - 1]) != std::string::npos || std::string("efzx").find(_exp[i + 1]) != std::string::npos)
+					if (std::string("fzx)!%").find(_exp[i - 1]) != std::string::npos || std::string("efzx").find(_exp[i + 1]) != std::string::npos) //DON'T INCLUDE e HERE, BECAUSE IT'D MEAN SCIENTIFIC NOTATION
 						return "";
 					if (!(std::isdigit(_exp[i - 1]) || _exp[i - 1] == '.' || std::isdigit(_exp[i + 1]) || _exp[i + 1] == '.'))
 						_result += '0';
@@ -2768,7 +2768,6 @@ public:
 		return _vResult;
 	}
 
-	
 	//* The expression should be a function of x
 	//* This method will substitute in the expression and return the result
 	std::vector<std::vector<std::string>> generateEvaluationStepsAt(const double startValue, const double endValue, const double step, const bool forceDecimalPoints, const bool forceAsterisks, const bool useAbsBars, const bool useSpaces) {
