@@ -28,7 +28,7 @@
 class ExpressionParser {
 public:
 	enum ErrorCodes : short {
-		NO_ERRORS, INVALID_EXPRESSION, INVALID_IMPLICIT_MULTIPLICATION, INVALID_DECIMAL_POINTS, INVALID_BRACKETS,
+		SUCCESS, INVALID_EXPRESSION, INVALID_IMPLICIT_MULTIPLICATION, INVALID_DECIMAL_POINTS, INVALID_BRACKETS,
 		INVALID_SCIENTIFIC_NOTATION, INVALID_OPERATOR_PLACEMENT, INVALID_FUNCTION_ARGUMENTS, INVALID_FUNCTION_CALL,
 		INVALID_ABS_BARS, CANNOT_DIVIDE_BY_ZERO, INVALID_EXPONENTIATION, EVALUATION_OUT_OF_RANGE, INVALID_PERMUTATIONS_OPERANDS,
 		INVALID_COMBINATIONS_OPERANDS, INVALID_BITWISE_LEFT_SHIFT_OPERANDS, INVALID_BITWISE_RIGHT_SHIFT_OPERANDS,
@@ -46,7 +46,7 @@ public:
 
 	struct EvaluationResult {
 		double value = 0;
-		ErrorCodes errorCode = ErrorCodes::NO_ERRORS;
+		ErrorCodes errorCode = ErrorCodes::SUCCESS;
 	};
 
 private:
@@ -219,7 +219,7 @@ private:
 			size_t _closedBrackets = getCharCount(_exp, _brackets[_bracketType][1]);
 
 			if (_openBrackets == 0 && _closedBrackets == 0)
-				return ErrorCodes::NO_ERRORS;
+				return ErrorCodes::SUCCESS;
 
 			//Validation level 1:
 			if (_openBrackets != _closedBrackets)
@@ -266,7 +266,7 @@ private:
 				}
 			}
 
-			return ErrorCodes::NO_ERRORS;
+			return ErrorCodes::SUCCESS;
 		}
 
 		//This method is used for internal use to format each evaluation step.
@@ -582,7 +582,7 @@ private:
 				if (CommonUtils::validateBrackets(_exp, BracketTypes::SQUARE) == ErrorCodes::INVALID_BRACKETS)
 					return { "", ErrorCodes::INVALID_ABS_BARS };
 
-				return { _exp, ErrorCodes::NO_ERRORS };
+				return { _exp, ErrorCodes::SUCCESS };
 			}
 
 			std::pair<std::string, ErrorCodes> _firstBranch, _secondBranch, _bruteForceResult;
@@ -592,7 +592,7 @@ private:
 
 			_bruteForceResult = _bruteForceAmbiguousPoles(_exp, _vPositions, _ambiguousIndex + 1);
 
-			if (_bruteForceResult.second == ErrorCodes::NO_ERRORS)
+			if (_bruteForceResult.second == ErrorCodes::SUCCESS)
 				return _bruteForceResult;
 
 			//Second branch:
@@ -606,7 +606,7 @@ private:
 			size_t i = _exp.find('|');
 
 			if (i == std::string::npos)
-				return { _exp, ErrorCodes::NO_ERRORS };
+				return { _exp, ErrorCodes::SUCCESS };
 
 			if (CommonUtils::getCharCount(_exp, '|') % 2) //If odd
 				return { _exp, ErrorCodes::INVALID_ABS_BARS };
@@ -665,7 +665,7 @@ private:
 					return _bruteForceAmbiguousPoles(_exp, _vAmbiguous, 0);
 			}
 
-			return { _exp, ErrorCodes::NO_ERRORS };
+			return { _exp, ErrorCodes::SUCCESS };
 		}
 
 		static void _formatSquareBracketsToFuns(std::string & _exp) {
@@ -682,7 +682,7 @@ private:
 		std::pair<std::string, ErrorCodes> _formatAbsoluteValues(std::string & _exp) {
 			std::pair<std::string, ErrorCodes> _result = _formatAbsPoles(_exp);
 
-			if (_result.second != ErrorCodes::NO_ERRORS)
+			if (_result.second != ErrorCodes::SUCCESS)
 				return _result;
 
 			_formatSquareBracketsToFuns(_result.first);
@@ -820,7 +820,7 @@ private:
 					_clonePos = _partialExpressionPair.first.length(); //I needed to save the length of _partialExpression for later, so I used this variable instead of creating a new one and consume more memory :-)
 					_partialExpressionPair = _formatNestedFuns(_partialExpressionPair.first);
 
-					if (_partialExpressionPair.second != ErrorCodes::NO_ERRORS)
+					if (_partialExpressionPair.second != ErrorCodes::SUCCESS)
 						return _partialExpressionPair;
 
 					if (_funChars.find(_partialExpressionPair.first.front()) != std::string::npos)
@@ -835,12 +835,12 @@ private:
 					return { "", ErrorCodes::INVALID_FUNCTION_CALL };
 			}
 			else
-				return { _exp, ErrorCodes::NO_ERRORS };
+				return { _exp, ErrorCodes::SUCCESS };
 		}
 
 		//To format the expression in (sum,prod)=(k,v) {x->w}
 		std::pair<std::string, ErrorCodes> _formatExperssions_SumProd(const std::string & _exp) {
-			std::pair<std::string, ErrorCodes> _resultPair = { _exp, ErrorCodes::NO_ERRORS };
+			std::pair<std::string, ErrorCodes> _resultPair = { _exp, ErrorCodes::SUCCESS };
 			size_t _funPos = 0, _commaPos;
 
 			while ((_funPos = _resultPair.first.find_first_of("kv", _funPos)) != std::string::npos) {
@@ -872,7 +872,7 @@ private:
 		}
 
 		std::pair<std::string, ErrorCodes> _formatFunctions(const std::string & _exp, const bool _implicitMultHighPrec) {
-			std::pair<std::string, ErrorCodes> _resultPair = { _exp, ErrorCodes::NO_ERRORS };
+			std::pair<std::string, ErrorCodes> _resultPair = { _exp, ErrorCodes::SUCCESS };
 
 			_resultPair.first = _formatImplicitBrackets_Funs(_resultPair.first); //This method supports early exit
 
@@ -881,7 +881,7 @@ private:
 
 			_resultPair = _formatNestedFuns(_resultPair.first); //This method supports early exit
 
-			if (_resultPair.second != ErrorCodes::NO_ERRORS)
+			if (_resultPair.second != ErrorCodes::SUCCESS)
 				return _resultPair;
 
 			return _formatExperssions_SumProd(_resultPair.first);
@@ -908,7 +908,7 @@ private:
 			const double _pi = 3.14159265358979324;
 			const double _e = 2.71828182845904524;
 			std::string _rightVal;
-			std::pair<std::string, ErrorCodes> _resultPair = { "", ErrorCodes::NO_ERRORS };
+			std::pair<std::string, ErrorCodes> _resultPair = { "", ErrorCodes::SUCCESS };
 
 			if (_exp[0] == 'E')
 				return { "", ErrorCodes::INVALID_SCIENTIFIC_NOTATION };
@@ -979,7 +979,7 @@ private:
 			size_t _operatorPos = _exp.find_first_of("PC"), _leftOperandStartPos;
 
 			if (_operatorPos == std::string::npos)
-				return { _exp, ErrorCodes::NO_ERRORS };
+				return { _exp, ErrorCodes::SUCCESS };
 
 			if (_operatorPos == 0 || _operatorPos == _exp.length() - 1)
 				return { "", ErrorCodes::INVALID_EXPRESSION };
@@ -1004,7 +1004,7 @@ private:
 				_operatorPos += 2; //For the next iteration
 			} while ((_operatorPos = _exp.find_first_of("PC", _operatorPos)) != std::string::npos);
 
-			return { _exp, ErrorCodes::NO_ERRORS };
+			return { _exp, ErrorCodes::SUCCESS };
 		}
 
 		std::pair<std::string, ErrorCodes> _formatImplicitMultiplication(const std::string & _exp, const bool _implicitMultHighPrec) {
@@ -1059,7 +1059,7 @@ private:
 									_partialExpressionLength = _partialExpressionPair.first.length();
 									_partialExpressionPair = _formatImplicitMultiplication(_partialExpressionPair.first, true);
 
-									if (_partialExpressionPair.second != ErrorCodes::NO_ERRORS)
+									if (_partialExpressionPair.second != ErrorCodes::SUCCESS)
 										return _partialExpressionPair;
 
 									_result.replace(_partialExpressionPos, _clonePos - _partialExpressionPos, _partialExpressionPair.first); //To format inner expressions containing implicit multiplication
@@ -1095,7 +1095,7 @@ private:
 						_result += _exp[i];
 				}
 
-				return { _result, ErrorCodes::NO_ERRORS };
+				return { _result, ErrorCodes::SUCCESS };
 			}
 		}
 
@@ -1142,7 +1142,7 @@ private:
 					_nextOperatorPos++;
 			}
 
-			return ErrorCodes::NO_ERRORS;
+			return ErrorCodes::SUCCESS;
 		}
 
 	public:
@@ -1153,9 +1153,9 @@ private:
 		//This method is used for internal use only
 		std::pair<std::string, ErrorCodes> formatExpression(const std::string & exp, const bool implicitMultHighPrec, const bool allowX = false) {
 			if (exp == "0")
-				return { "0", ErrorCodes::NO_ERRORS };
+				return { "0", ErrorCodes::SUCCESS };
 
-			std::pair<std::string, ErrorCodes> _resultPair = { exp, ErrorCodes::NO_ERRORS };
+			std::pair<std::string, ErrorCodes> _resultPair = { exp, ErrorCodes::SUCCESS };
 
 			_resultPair.first = _removeSpaces(_resultPair.first);
 
@@ -1181,7 +1181,7 @@ private:
 
 			_resultPair = _formatFunctions(_resultPair.first, implicitMultHighPrec); //This method supports early exit
 
-			if (_resultPair.second != ErrorCodes::NO_ERRORS)
+			if (_resultPair.second != ErrorCodes::SUCCESS)
 				return _resultPair;
 
 			if (allowX)
@@ -1190,18 +1190,18 @@ private:
 			//Formatting unary minus with brackets with PC when implicitMultHighPrec is false:
 			_resultPair = _formatUnaryMinus_PC(_resultPair.first); //This method supports early exit
 
-			if (_resultPair.second != ErrorCodes::NO_ERRORS)
+			if (_resultPair.second != ErrorCodes::SUCCESS)
 				return _resultPair;
 
 			_resultPair = _formatImplicitMultiplication(_resultPair.first, implicitMultHighPrec); //This method supports early exit
 
-			if (_resultPair.second != ErrorCodes::NO_ERRORS)
+			if (_resultPair.second != ErrorCodes::SUCCESS)
 				return _resultPair;
 
 			if (_resultPair.first.find_first_of("efzE") != std::string::npos) {
 				_resultPair = _formatConstants_ScientificNotation(_resultPair.first); //This method supports early exit
 
-				if (_resultPair.second != ErrorCodes::NO_ERRORS)
+				if (_resultPair.second != ErrorCodes::SUCCESS)
 					return _resultPair;
 			}
 
@@ -1297,7 +1297,7 @@ private:
 					if (getCharCount(_partialExpression, ',') > 0)
 						return ErrorCodes::INVALID_EXPRESSION;
 					else
-						return ErrorCodes::NO_ERRORS;
+						return ErrorCodes::SUCCESS;
 				}
 
 				if (_partialExpression.front() == ',' || _partialExpression.back() == ',')
@@ -1317,7 +1317,7 @@ private:
 				}
 
 				_partialExpression = "0";
-				return ErrorCodes::NO_ERRORS;
+				return ErrorCodes::SUCCESS;
 			}
 			else if (_firstFunPos == _partialExpression.length() - 1)
 				return ErrorCodes::INVALID_FUNCTION_CALL;
@@ -1332,21 +1332,21 @@ private:
 				size_t _originalSubPartialExpressionLength = _subPartialExpression.length();
 
 				ErrorCodes _subResult = _validateMultiArgumentFuns(_subPartialExpression, _partialExpression[_firstFunPos]);
-				if (_subResult != ErrorCodes::NO_ERRORS)
+				if (_subResult != ErrorCodes::SUCCESS)
 					return _subResult;
 
 				_partialExpression.replace(_firstFunPos, _originalSubPartialExpressionLength + 3, _subPartialExpression);
 
 				if (_partialExpression == "0,0" || _partialExpression == "0,0,0") {
 					_partialExpression = "0";
-					return ErrorCodes::NO_ERRORS;
+					return ErrorCodes::SUCCESS;
 				}
 
 				_subResult = _validateMultiArgumentFuns(_partialExpression, _outerFunChar);
-				if (_subResult != ErrorCodes::NO_ERRORS)
+				if (_subResult != ErrorCodes::SUCCESS)
 					return _subResult;
 
-				return ErrorCodes::NO_ERRORS;
+				return ErrorCodes::SUCCESS;
 			}
 		}
 
@@ -1376,13 +1376,13 @@ private:
 				}
 			}
 
-			return ErrorCodes::NO_ERRORS;
+			return ErrorCodes::SUCCESS;
 		}
 
 	public:
 		static ErrorCodes validateExpression(const std::string & _exp) {
 			if (_exp == "0")
-				return ErrorCodes::NO_ERRORS;
+				return ErrorCodes::SUCCESS;
 
 			if (!_validateCharacters(_exp))
 				return ErrorCodes::INVALID_EXPRESSION;
@@ -1398,21 +1398,21 @@ private:
 
 			ErrorCodes _errCode = CommonUtils::validateBrackets(_exp, BracketTypes::REGULAR);
 
-			if (_errCode != ErrorCodes::NO_ERRORS)
+			if (_errCode != ErrorCodes::SUCCESS)
 				return _errCode;
 
 			std::string _temp = _exp;
 			_errCode = _validateMultiArgumentFuns(_temp);
 
-			if (_errCode != ErrorCodes::NO_ERRORS) //This is recursion-based -- It modifies the parameter
+			if (_errCode != ErrorCodes::SUCCESS) //This is recursion-based -- It modifies the parameter
 				return _errCode;
 
 			_errCode = _validateSequentialChars(_exp);
 
-			if (_errCode != ErrorCodes::NO_ERRORS)
+			if (_errCode != ErrorCodes::SUCCESS)
 				return _errCode;
 
-			return ErrorCodes::NO_ERRORS;
+			return ErrorCodes::SUCCESS;
 		}
 	};
 
@@ -1618,7 +1618,7 @@ private:
 				_intermediateExp = CommonUtils::plugInVal(_exp, _firstLimit, _precision);
 				_result += _evaluatePartial(_intermediateExp, false);
 
-				if (_evaluationResult != ErrorCodes::NO_ERRORS)
+				if (_evaluationResult != ErrorCodes::SUCCESS)
 					return 0;
 			}
 
@@ -1633,7 +1633,7 @@ private:
 				_intermediateExp = CommonUtils::plugInVal(_exp, _firstLimit, _precision);
 				_result *= _evaluatePartial(_intermediateExp, false);
 
-				if (_evaluationResult != ErrorCodes::NO_ERRORS)
+				if (_evaluationResult != ErrorCodes::SUCCESS)
 					return 0;
 			}
 
@@ -1652,7 +1652,7 @@ private:
 
 		//For one-argument functions:
 		double _calculate_OneArgument(const double _val, const char _funChar) {
-			if (_evaluationResult != ErrorCodes::NO_ERRORS)
+			if (_evaluationResult != ErrorCodes::SUCCESS)
 				return 0;
 
 			double _result = 0;
@@ -1929,7 +1929,7 @@ private:
 
 		//For two-argument functions + Other Operators
 		double _calculate_TwoArguments(double _val1, double _val2, const char _funChar) {
-			if (_evaluationResult != ErrorCodes::NO_ERRORS)
+			if (_evaluationResult != ErrorCodes::SUCCESS)
 				return 0;
 
 			double _result = 0;
@@ -2145,7 +2145,7 @@ private:
 				}
 			}
 
-			if (_evaluationResult != ErrorCodes::NO_ERRORS)
+			if (_evaluationResult != ErrorCodes::SUCCESS)
 				return 0;
 
 			if (_result == INFINITY || _result == -INFINITY) {
@@ -2188,7 +2188,7 @@ private:
 		}
 
 		double _evaluatePartial(std::string & _partialExpression, const bool _recordSteps, const bool _funCall = false) {
-			if (_evaluationResult != ErrorCodes::NO_ERRORS) //Force exit
+			if (_evaluationResult != ErrorCodes::SUCCESS) //Force exit
 				return 0;
 
 			if (_isNumericalValue(_partialExpression)) { //Recursion limit
@@ -2231,7 +2231,7 @@ private:
 
 						_insertSubPartialResult(_partialExpression, _operatorPos, _closedBracketPos, _subPartialResult);
 
-						if (_recordSteps && _evaluationResult == ErrorCodes::NO_ERRORS && _overallOperatorPositions.size() > 1) {
+						if (_recordSteps && _evaluationResult == ErrorCodes::SUCCESS && _overallOperatorPositions.size() > 1) {
 							std::string _lastExp = _evaluationSteps.back().first;
 							_subPartialExpression = _lastExp.substr(_overallOperatorPositions.top() + 1, CommonUtils::findRespectiveBracketPos(_lastExp, _overallOperatorPositions.top(), BracketTypes::REGULAR) - _overallOperatorPositions.top() - 1);
 
@@ -2293,13 +2293,13 @@ private:
 						std::string _rightExpression = _subPartialExpression.substr(_commaPos + 1);
 
 						double _leftExpressionResult = _evaluatePartial(_leftExpression, _recordSteps, true);
-						if (_evaluationResult != ErrorCodes::NO_ERRORS)
+						if (_evaluationResult != ErrorCodes::SUCCESS)
 							return 0;
 						if (_recordSteps)
 							_overallOperatorPositions.top() += _leftExpression.length() + 1;
 
 						double _rightExpressionResult = _evaluatePartial(_rightExpression, _recordSteps, true);
-						if (_evaluationResult != ErrorCodes::NO_ERRORS)
+						if (_evaluationResult != ErrorCodes::SUCCESS)
 							return 0;
 						if (_recordSteps)
 							_overallOperatorPositions.top() -= _leftExpression.length() + 1;
@@ -2322,13 +2322,13 @@ private:
 					if (_recordSteps)
 						_overallOperatorPositions.top() += _leftExpression.length() + 1;
 					double _middleExpressionResult = _evaluatePartial(_middleExpression, _recordSteps, true);
-					if (_evaluationResult != ErrorCodes::NO_ERRORS)
+					if (_evaluationResult != ErrorCodes::SUCCESS)
 						return 0;
 
 					if (_recordSteps)
 						_overallOperatorPositions.top() += _middleExpression.length() + 1;
 					double _rightExpressionResult = _evaluatePartial(_rightExpression, _recordSteps, true);
-					if (_evaluationResult != ErrorCodes::NO_ERRORS)
+					if (_evaluationResult != ErrorCodes::SUCCESS)
 						return 0;
 
 					if (_recordSteps)
@@ -2343,7 +2343,7 @@ private:
 
 				_insertSubPartialResult_funs(_partialExpression, _operatorPos + 1, _closedBracketPos, _subPartialResult);
 
-				if (_recordSteps && _evaluationResult == ErrorCodes::NO_ERRORS) { //We must re-extract _subPartialExpression from _lastExp because there might be incosistencies
+				if (_recordSteps && _evaluationResult == ErrorCodes::SUCCESS) { //We must re-extract _subPartialExpression from _lastExp because there might be incosistencies
 					std::string _lastExp = _evaluationSteps.back().first;
 					_subPartialExpression = _lastExp.substr(_overallOperatorPositions.top() + 1, CommonUtils::findRespectiveBracketPos(_lastExp, _overallOperatorPositions.top(), BracketTypes::REGULAR) - _overallOperatorPositions.top() - 1);
 					_insertSubPartialResult_funs(_lastExp, _overallOperatorPositions.top(), _subPartialExpression.length(), _subPartialResult);
@@ -2369,7 +2369,7 @@ private:
 
 				_insertSubPartialResult(_partialExpression, _operatorPos, _num, "", _subPartialResult);
 
-				if (_recordSteps && _evaluationResult == ErrorCodes::NO_ERRORS) {
+				if (_recordSteps && _evaluationResult == ErrorCodes::SUCCESS) {
 					std::string _lastExp = _evaluationSteps.back().first;
 					_insertSubPartialResult(_lastExp, _overallOperatorPositions.top(), _num, "", _subPartialResult);
 					_evaluationSteps.push_back({ _lastExp, true });
@@ -2446,7 +2446,7 @@ private:
 
 			_insertSubPartialResult(_partialExpression, _operatorPos, _num1, _num2, _subPartialResult);
 
-			if (_recordSteps && _evaluationResult == ErrorCodes::NO_ERRORS) {
+			if (_recordSteps && _evaluationResult == ErrorCodes::SUCCESS) {
 				std::string _lastExp = _evaluationSteps.back().first;
 
 				if (_overallOperatorPositions.size() > 1) {
@@ -2488,7 +2488,7 @@ private:
 		}
 
 		void reset() {
-			_evaluationResult = ErrorCodes::NO_ERRORS;
+			_evaluationResult = ErrorCodes::SUCCESS;
 
 			if (!_evaluationSteps.empty())
 				_evaluationSteps.clear();
@@ -2512,7 +2512,7 @@ private:
 
 			_evaluatePartial(_fullExpression, true, false);
 
-			if (!_evaluationSteps.back().second && _evaluationResult == ErrorCodes::NO_ERRORS)
+			if (!_evaluationSteps.back().second && _evaluationResult == ErrorCodes::SUCCESS)
 				_evaluationSteps.back().second = true;
 
 			std::vector<std::string> _finalResult;
@@ -2539,12 +2539,12 @@ private:
 	std::string _validate_ReturningVector() { //To avoid code duplication
 		std::pair<std::string, ErrorCodes> _formatting_result = ExpressionFormatter(_operatorNames, _precision).formatExpression(_expression, _implicitMultHighPrec, true);
 
-		if (_formatting_result.second != ErrorCodes::NO_ERRORS)
+		if (_formatting_result.second != ErrorCodes::SUCCESS)
 			return "";
 
 		_formatting_result.second = ExpressionValidator().validateExpression(_formatting_result.first);
 
-		if (_formatting_result.second != ErrorCodes::NO_ERRORS)
+		if (_formatting_result.second != ErrorCodes::SUCCESS)
 			return "";
 
 		return _formatting_result.first;
@@ -2598,10 +2598,10 @@ public:
 		if (_expression != "0") {
 			_formattingResult = ExpressionFormatter(_operatorNames, _precision).formatExpression(_expression, _implicitMultHighPrec);
 
-			if (_formattingResult.second == ErrorCodes::NO_ERRORS) { //If the format succeeded
+			if (_formattingResult.second == ErrorCodes::SUCCESS) { //If the format succeeded
 				_formattingResult.second = ExpressionValidator::validateExpression(_formattingResult.first);
 
-				if (_formattingResult.second != ErrorCodes::NO_ERRORS)
+				if (_formattingResult.second != ErrorCodes::SUCCESS)
 					_formattingResult.first = "";
 			}
 		}
@@ -2618,7 +2618,7 @@ public:
 		_precision = _clampNumberBetween(precision, 0, 17);
 
 		//To refresh the formatted expression:
-		if ((_expression.find('e') != std::string::npos || _expression.find("pi") != std::string::npos || _expression.find("rnd#") != std::string::npos) && _formattingResult.second == ErrorCodes::NO_ERRORS)
+		if ((_expression.find('e') != std::string::npos || _expression.find("pi") != std::string::npos || _expression.find("rnd#") != std::string::npos) && _formattingResult.second == ErrorCodes::SUCCESS)
 			_formattingResult = ExpressionFormatter(_operatorNames, _precision).formatExpression(_expression, _implicitMultHighPrec);
 	}
 
@@ -2644,7 +2644,7 @@ public:
 		_implicitMultHighPrec = implicitMultHighPrec;
 
 		//To refresh the formatted expression
-		if (_formattingResult.second == ErrorCodes::NO_ERRORS)
+		if (_formattingResult.second == ErrorCodes::SUCCESS)
 			_formattingResult = ExpressionFormatter(_operatorNames, _precision).formatExpression(_expression, _implicitMultHighPrec);
 	}
 
@@ -2662,7 +2662,7 @@ public:
 
 	//* This will return a struct, containing the value and the evaluation result (error code).
 	EvaluationResult evaluate() const {
-		if (_formattingResult.second != ErrorCodes::NO_ERRORS)
+		if (_formattingResult.second != ErrorCodes::SUCCESS)
 			return { 0, _formattingResult.second };
 
 		return ExpressionEvaluator(_precision, _angleUnit, _forceBitwiseLogic, _formattingResult.first).initiateEvaluation();
@@ -2670,7 +2670,7 @@ public:
 
 	//* This method will return an empty string, should the expression be invalid.
 	std::string formatExpression(const bool forceDecimalPoints, const bool forceAsterisks, const bool useAbsBars, const bool useSpaces) const {
-		if (_formattingResult.second != ErrorCodes::NO_ERRORS)
+		if (_formattingResult.second != ErrorCodes::SUCCESS)
 			return "";
 
 		return CommonUtils::formatExpression(_formattingResult.first, _operatorNames, forceDecimalPoints, forceAsterisks, useAbsBars, useSpaces);
@@ -2679,7 +2679,7 @@ public:
 	//* This method will return an empty vector, should the expression be invalid.
 	//* If a calculation goes wrong (i.e sqrt(-2)), the vector will stop at the last successful step.
 	std::vector<std::string> generateEvaluationSteps(const bool forceDecimalPoints, const bool forceAsterisks, const bool useAbsBars, const bool useSpaces) const {
-		if (_formattingResult.second != ErrorCodes::NO_ERRORS)
+		if (_formattingResult.second != ErrorCodes::SUCCESS)
 			return {};
 
 		return ExpressionEvaluator(_precision, _angleUnit, _forceBitwiseLogic, _formattingResult.first).getEvaluationSteps(_operatorNames, forceDecimalPoints, forceAsterisks, useAbsBars, useSpaces);
@@ -2690,12 +2690,12 @@ public:
 	EvaluationResult evaluateAt(const double value) {
 		std::pair<std::string, ErrorCodes> _formatting_result = ExpressionFormatter(_operatorNames, _precision).formatExpression(_expression, _implicitMultHighPrec, true);
 		
-		if (_formatting_result.second != ErrorCodes::NO_ERRORS)
+		if (_formatting_result.second != ErrorCodes::SUCCESS)
 			return { 0, _formatting_result.second };
 		
 		_formatting_result.second = ExpressionValidator().validateExpression(_formatting_result.first);
 
-		if (_formatting_result.second != ErrorCodes::NO_ERRORS)
+		if (_formatting_result.second != ErrorCodes::SUCCESS)
 			return { 0, _formatting_result.second };
 
 		return ExpressionEvaluator(_precision, _angleUnit, _forceBitwiseLogic, CommonUtils::plugInVal(_formatting_result.first, value, _precision)).initiateEvaluation();
@@ -2706,12 +2706,12 @@ public:
 	std::vector<EvaluationResult> evaluateAt(const std::vector<double> & values) {
 		std::pair<std::string, ErrorCodes> _formatting_result = ExpressionFormatter(_operatorNames, _precision).formatExpression(_expression, _implicitMultHighPrec, true);
 
-		if (_formatting_result.second != ErrorCodes::NO_ERRORS)
+		if (_formatting_result.second != ErrorCodes::SUCCESS)
 			return { { 0, _formatting_result.second } };
 
 		_formatting_result.second = ExpressionValidator().validateExpression(_formatting_result.first);
 
-		if (_formatting_result.second != ErrorCodes::NO_ERRORS)
+		if (_formatting_result.second != ErrorCodes::SUCCESS)
 			return { { 0, _formatting_result.second } };
 
 		std::vector<EvaluationResult> _vResult;
