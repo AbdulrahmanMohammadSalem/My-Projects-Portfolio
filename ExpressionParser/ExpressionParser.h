@@ -109,6 +109,19 @@ private:
 			return _bracketPos;
 		}
 
+		static bool isNumericalValue(const std::string & str) {
+			size_t i = 0;
+
+			if (str.front() == '-' || str.front() == '+')
+				i++;
+
+			for (i; i < str.length(); i++)
+				if (!std::isdigit(str[i]) && str[i] != '.')
+					return false;
+
+			return true;
+		}
+
 		static std::string convertDoubleToStr(const double d, const short _precision, const bool _insertSign = true) {
 			std::string _result;
 
@@ -118,7 +131,7 @@ private:
 				_result = _oss.str();
 			}
 
-			if (stod(_result) == 0)
+			if (std::stod(_result) == 0)
 				return _insertSign ? "+0" : "0";
 
 			size_t _firstNonZeroPos = _result.length() - 1;
@@ -271,6 +284,9 @@ private:
 
 		//This method is used for internal use to format each evaluation step.
 		static std::string formatExpression(const std::string & _exp, const std::unordered_map<char, std::string> & _operatorNames, const bool _forceDecimalPoints, const bool _forceAsterisks, const bool _useAbsBars, const bool _useSpaces) {
+			if (isNumericalValue(_exp) && std::stod(_exp) == 0)
+				return "0";
+			
 			const std::string _funChars = "ABDFGHJKLMNOQRSTUVWXYZ~@{$&_?}\"\\ qonkvh", _magicChars = "`;:\'j", _twoOperandOperators = "*/^PCiygmubdlpr<=>"; //We will not put <=> because they are standalone (they are not associated with a string)
 			std::string _result, _substr;
 			size_t _substrLength;
@@ -1431,19 +1447,6 @@ private:
 		std::stack<size_t> _overallOperatorPositions; //Stacks enforce nesting naturally
 		ReplacementTypes _overallReplacementType = ReplacementTypes::OPERATION; //This must be static
 
-		static bool _isNumericalValue(const std::string & str) {
-			size_t i = 0;
-
-			if (str.front() == '-' || str.front() == '+')
-				i++;
-
-			for (i; i < str.length(); i++)
-				if (!std::isdigit(str[i]) && str[i] != '.')
-					return false;
-
-			return true;
-		}
-
 		static size_t _findCorrectExponentPos(const std::string & _partialExpression) {
 			size_t _firstPos;
 
@@ -2193,8 +2196,8 @@ private:
 			if (_evaluationResult != ErrorCodes::SUCCESS) //Force exit
 				return 0;
 
-			if (_isNumericalValue(_partialExpression)) { //Recursion limit
-				double _val = stod(_partialExpression);
+			if (CommonUtils::isNumericalValue(_partialExpression)) { //Recursion limit
+				double _val = std::stod(_partialExpression);
 				return _val == 0 ? 0 : _val; //To normalize -0.0
 			}
 
@@ -2224,7 +2227,7 @@ private:
 
 						_closedBracketPos = _subPartialExpression.length(); //I needed to save the length of _subPartialExpression for later, so I used this variable instead of creating a new one and consume more memory :-)
 
-						const bool _updateLastExp = _isNumericalValue(_subPartialExpression); //Because _evaluatePartial will not touch _evaluationSteps in case of _subPartialResult is a numerical value, we will update it here explicity
+						const bool _updateLastExp = CommonUtils::isNumericalValue(_subPartialExpression); //Because _evaluatePartial will not touch _evaluationSteps in case of _subPartialResult is a numerical value, we will update it here explicity
 
 						if (_recordSteps)
 							_subPartialResult = _evaluatePartial(_subPartialExpression, _recordSteps, _overallOperatorPositions.top() != std::string::npos && _overallOperatorPositions.top() > 0 && _funChars.find(_evaluationSteps.back().first[_overallOperatorPositions.top() - 1]) != std::string::npos);
@@ -2238,7 +2241,7 @@ private:
 							_subPartialExpression = _lastExp.substr(_overallOperatorPositions.top() + 1, CommonUtils::findRespectiveBracketPos(_lastExp, _overallOperatorPositions.top(), BracketTypes::REGULAR) - _overallOperatorPositions.top() - 1);
 
 							//We don't need to check the evaluation result here, because the bracket contains only one value -- To also deal with redundant brackets:
-							if (_updateLastExp || _isNumericalValue(_subPartialExpression)) { //We must re-check that for specific cases
+							if (_updateLastExp || CommonUtils::isNumericalValue(_subPartialExpression)) { //We must re-check that for specific cases
 								_insertSubPartialResult(_lastExp, _overallOperatorPositions.top(), _subPartialExpression.length(), _subPartialResult);
 								_evaluationSteps.push_back({ _lastExp, false }); //To not show this redundant step in the final vector, but still be consistent with the internal processes
 								_overallOperatorPositions.pop(); //To return to the previous level of nesting
@@ -2367,7 +2370,7 @@ private:
 
 				std::string _num = CommonUtils::extractLeftValue(_partialExpression, _operatorPos); //This will extract the value with the sign, unless there's no magic chars
 
-				_subPartialResult = _calculate_OneArgument(stod(_num), _partialExpression[_operatorPos]);
+				_subPartialResult = _calculate_OneArgument(std::stod(_num), _partialExpression[_operatorPos]);
 
 				_insertSubPartialResult(_partialExpression, _operatorPos, _num, "", _subPartialResult);
 
@@ -2444,7 +2447,7 @@ private:
 			//Extracting _num2:
 			std::string _num2 = CommonUtils::extractRightValue(_partialExpression, _operatorPos);
 
-			_subPartialResult = _calculate_TwoArguments(stod(_num1), stod(_num2), _partialExpression[_operatorPos]);
+			_subPartialResult = _calculate_TwoArguments(std::stod(_num1), std::stod(_num2), _partialExpression[_operatorPos]);
 
 			_insertSubPartialResult(_partialExpression, _operatorPos, _num1, _num2, _subPartialResult);
 
@@ -2486,7 +2489,7 @@ private:
 
 			std::ostringstream _oss;
 			_oss << std::fixed << std::setprecision(_precision) << 3.14159265358979324;
-			_pi = stod(_oss.str()); //To be consistent with inner calculations
+			_pi = std::stod(_oss.str()); //To be consistent with inner calculations
 		}
 
 		void reset() {
@@ -2538,18 +2541,15 @@ private:
 		return _num;
 	}
 
-	std::string _validate_ReturningVector() { //To avoid code duplication
-		std::pair<std::string, ErrorCodes> _formatting_result = ExpressionFormatter(_operatorNames, _precision).formatExpression(_expression, _implicitMultHighPrec, true);
+	std::pair<std::string, ErrorCodes> _validate_allowingX() const { //To avoid code duplication
+		std::pair<std::string, ErrorCodes> _validating_result = ExpressionFormatter(_operatorNames, _precision).formatExpression(_expression, _implicitMultHighPrec, true);
 
-		if (_formatting_result.second != ErrorCodes::SUCCESS)
-			return "";
+		if (_validating_result.second != ErrorCodes::SUCCESS)
+			return _formattingResult;
 
-		_formatting_result.second = ExpressionValidator().validateExpression(_formatting_result.first);
+		_validating_result.second = ExpressionValidator().validateExpression(_validating_result.first);
 
-		if (_formatting_result.second != ErrorCodes::SUCCESS)
-			return "";
-
-		return _formatting_result.first;
+		return _validating_result;
 	}
 
 	std::vector<double> _getValuesFromRange(double _startValue, const double _endValue, const double _step) {
@@ -2675,10 +2675,12 @@ public:
 
 	//* This method will return an empty string, should the expression be invalid.
 	std::string formatExpression(const bool forceDecimalPoints, const bool forceAsterisks, const bool useAbsBars, const bool useSpaces) const {
-		if (_formattingResult.second != ErrorCodes::SUCCESS)
+		std::string _validating_result_string = _validate_allowingX().first;
+
+		if (_validating_result_string.empty())
 			return "";
 
-		return CommonUtils::formatExpression(_formattingResult.first, _operatorNames, forceDecimalPoints, forceAsterisks, useAbsBars, useSpaces);
+		return CommonUtils::formatExpression(_validating_result_string, _operatorNames, forceDecimalPoints, forceAsterisks, useAbsBars, useSpaces);
 	}
 
 	//* This method will return an empty vector, should the expression be invalid.
@@ -2693,42 +2695,32 @@ public:
 	//* The expression should be a function of x
 	//* This method will substitute in the expression and return the result
 	EvaluationResult evaluateAt(const double value) {
-		std::pair<std::string, ErrorCodes> _formatting_result = ExpressionFormatter(_operatorNames, _precision).formatExpression(_expression, _implicitMultHighPrec, true);
+		std::pair<std::string, ErrorCodes> _validating_result = _validate_allowingX();
 		
-		if (_formatting_result.second != ErrorCodes::SUCCESS)
-			return { 0, _formatting_result.second };
+		if (_validating_result.second != ErrorCodes::SUCCESS)
+			return { 0, _validating_result.second };
 		
-		_formatting_result.second = ExpressionValidator().validateExpression(_formatting_result.first);
-
-		if (_formatting_result.second != ErrorCodes::SUCCESS)
-			return { 0, _formatting_result.second };
-
-		return ExpressionEvaluator(_precision, _angleUnit, _forceBitwiseLogic, CommonUtils::plugInVal(_formatting_result.first, value, _precision)).initiateEvaluation();
+		return ExpressionEvaluator(_precision, _angleUnit, _forceBitwiseLogic, CommonUtils::plugInVal(_validating_result.first, value, _precision)).initiateEvaluation();
 	}
 
 	//* The expression should be a function of x
 	//* This method will substitute in the expression and return the result
 	std::vector<EvaluationResult> evaluateAt(const std::vector<double> & values) {
-		std::pair<std::string, ErrorCodes> _formatting_result = ExpressionFormatter(_operatorNames, _precision).formatExpression(_expression, _implicitMultHighPrec, true);
+		std::pair<std::string, ErrorCodes> _validating_result = _validate_allowingX();
+		
+		if (_validating_result.second != ErrorCodes::SUCCESS)
+			return { {0, _validating_result.second} };
 
-		if (_formatting_result.second != ErrorCodes::SUCCESS)
-			return { { 0, _formatting_result.second } };
-
-		_formatting_result.second = ExpressionValidator().validateExpression(_formatting_result.first);
-
-		if (_formatting_result.second != ErrorCodes::SUCCESS)
-			return { { 0, _formatting_result.second } };
-
-		std::vector<EvaluationResult> _vResult;
+		std::vector<EvaluationResult> _vResults;
 		ExpressionEvaluator _evaluator(_precision, _angleUnit, _forceBitwiseLogic);
 
 		for (const double V : values) {
-			_evaluator.setFullExpression(CommonUtils::plugInVal(_formatting_result.first, V, _precision));
-			_vResult.push_back(_evaluator.initiateEvaluation());
+			_evaluator.setFullExpression(CommonUtils::plugInVal(_validating_result.first, V, _precision));
+			_vResults.push_back(_evaluator.initiateEvaluation());
 			_evaluator.reset();
 		}
 
-		return _vResult;
+		return _vResults;
 	}
 
 	//* The expression should be a function of x
@@ -2745,27 +2737,27 @@ public:
 	//* The expression should be a function of x
 	//* This method will substitute in the expression and return the result
 	std::vector<std::string> generateEvaluationStepsAt(const double value, const bool forceDecimalPoints, const bool forceAsterisks, const bool useAbsBars, const bool useSpaces) {
-		std::string _validating_result = _validate_ReturningVector();
+		std::string _validating_result_string = _validate_allowingX().first;
 		
-		if (_validating_result == "")
+		if (_validating_result_string.empty())
 			return {};
 
-		return ExpressionEvaluator(_precision, _angleUnit, _forceBitwiseLogic, CommonUtils::plugInVal(_validating_result, value, _precision)).getEvaluationSteps(_operatorNames, forceDecimalPoints, forceAsterisks, useAbsBars, useSpaces);
+		return ExpressionEvaluator(_precision, _angleUnit, _forceBitwiseLogic, CommonUtils::plugInVal(_validating_result_string, value, _precision)).getEvaluationSteps(_operatorNames, forceDecimalPoints, forceAsterisks, useAbsBars, useSpaces);
 	}
 
 	//* The expression should be a function of x
 	//* This method will substitute in the expression and return the result
 	std::vector<std::vector<std::string>> generateEvaluationStepsAt(const std::vector<double> & values, const bool forceDecimalPoints, const bool forceAsterisks, const bool useAbsBars, const bool useSpaces) {
-		std::string _expAfterValidation = _validate_ReturningVector();
+		std::string _validating_result_string = _validate_allowingX().first;
 
-		if (_expAfterValidation == "")
+		if (_validating_result_string.empty())
 			return {};
 
 		std::vector<std::vector<std::string>> _vResult;
 		ExpressionEvaluator _evaluator(_precision, _angleUnit, _forceBitwiseLogic);
 
 		for (const double V : values) {
-			_evaluator.setFullExpression(CommonUtils::plugInVal(_expAfterValidation, V, _precision));
+			_evaluator.setFullExpression(CommonUtils::plugInVal(_validating_result_string, V, _precision));
 			_vResult.push_back(_evaluator.getEvaluationSteps(_operatorNames, forceDecimalPoints, forceAsterisks, useAbsBars, useSpaces));
 			_evaluator.reset();
 		}
@@ -2783,5 +2775,4 @@ public:
 
 		return generateEvaluationStepsAt(_values, forceDecimalPoints, forceAsterisks, useAbsBars, useSpaces);
 	}
-
 };
