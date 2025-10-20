@@ -1152,15 +1152,14 @@ private:
 
 		//This method is used for internal use only
 		std::pair<std::string, ErrorCodes> formatExpression(const std::string & exp, const bool implicitMultHighPrec, const bool allowX = false) {
-			if (exp == "0")
+			std::pair<std::string, ErrorCodes> _resultPair = { exp, ErrorCodes::SUCCESS };
+			_resultPair.first = _removeSpaces(_resultPair.first);
+
+			if (_resultPair.first == "0" || _resultPair.first.empty())
 				return { "0", ErrorCodes::SUCCESS };
 
-			std::pair<std::string, ErrorCodes> _resultPair = { exp, ErrorCodes::SUCCESS };
-
-			if (exp.find_first_of("fz") != std::string::npos)
+			if (_resultPair.first.find_first_of("fz") != std::string::npos)
 				return { "", ErrorCodes::INVALID_EXPRESSION };
-
-			_resultPair.first = _removeSpaces(_resultPair.first);
 
 			_replaceTokens_lowercase(_resultPair.first);
 			_replaceTokens_uppercase(_resultPair.first);
@@ -2573,6 +2572,7 @@ private:
 
 public:
 	ExpressionParser(const std::string & expression = "0", const short precision = 6, const AngleUnits angleUnit = AngleUnits::RADIAN, const bool implicitMultHighPrec = false, const bool forceBitwiseLogic = false) {
+		_formattingResult = { "0", ErrorCodes::SUCCESS };
 		_implicitMultHighPrec = implicitMultHighPrec;
 		_forceBitwiseLogic = forceBitwiseLogic;
 		_angleUnit = angleUnit;
@@ -2608,6 +2608,8 @@ public:
 					_formattingResult.first = "";
 			}
 		}
+		else
+			_formattingResult = { "0", ErrorCodes::SUCCESS };
 	}
 
 	short getPrecision() const {
