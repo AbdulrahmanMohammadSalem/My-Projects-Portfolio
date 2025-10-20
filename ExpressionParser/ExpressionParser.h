@@ -29,8 +29,8 @@ class ExpressionParser {
 public:
 	enum ErrorCodes : short {
 		SUCCESS, INVALID_EXPRESSION, INVALID_IMPLICIT_MULTIPLICATION, INVALID_DECIMAL_POINTS, INVALID_BRACKETS,
-		INVALID_SCIENTIFIC_NOTATION, INVALID_OPERATOR_PLACEMENT, INVALID_FUNCTION_ARGUMENTS, INVALID_FUNCTION_CALL,
-		INVALID_ABS_BARS, CANNOT_DIVIDE_BY_ZERO, INVALID_EXPONENTIATION, EVALUATION_OUT_OF_RANGE, INVALID_PERMUTATIONS_OPERANDS,
+		INVALID_SCIENTIFIC_NOTATION, INVALID_OPERATOR_PLACEMENT, INVALID_FUNCTION_ARGUMENTS, INVALID_ABS_BARS,
+		CANNOT_DIVIDE_BY_ZERO, INVALID_EXPONENTIATION, EVALUATION_OUT_OF_RANGE, INVALID_PERMUTATIONS_OPERANDS,
 		INVALID_COMBINATIONS_OPERANDS, INVALID_BITWISE_LEFT_SHIFT_OPERANDS, INVALID_BITWISE_RIGHT_SHIFT_OPERANDS,
 		INVALID_BITWISE_NOT_OPERAND, INVALID_BITWISE_XNOR_OPERANDS, INVALID_BITWISE_NAND_OPERANDS, INVALID_BITWISE_NOR_OPERANDS,
 		INVALID_BITWISE_XOR_OPERANDS, INVALID_BITWISE_AND_OPERANDS, INVALID_BITWISE_OR_OPERANDS, OUT_OF_DOMAIN_ACOSH,
@@ -813,7 +813,7 @@ private:
 						}
 
 						else
-							return { "", ErrorCodes::INVALID_FUNCTION_CALL };
+							return { "", ErrorCodes::INVALID_EXPRESSION };
 					}
 
 					_partialExpressionPair.first = _exp.substr(_firstFunPos + 1, _clonePos - _firstFunPos);
@@ -832,7 +832,7 @@ private:
 					return _formatNestedFuns(_result);
 				}
 				else
-					return { "", ErrorCodes::INVALID_FUNCTION_CALL };
+					return { "", ErrorCodes::INVALID_EXPRESSION };
 			}
 			else
 				return { _exp, ErrorCodes::SUCCESS };
@@ -845,7 +845,7 @@ private:
 
 			while ((_funPos = _resultPair.first.find_first_of("kv", _funPos)) != std::string::npos) {
 				if (_funPos == _resultPair.first.length() - 1 || _resultPair.first[_funPos + 1] != '(')
-					return { "", ErrorCodes::INVALID_FUNCTION_CALL };
+					return { "", ErrorCodes::INVALID_EXPRESSION };
 
 				_commaPos = CommonUtils::findFirstCommaPos(_resultPair.first, _funPos + 2);
 
@@ -877,7 +877,7 @@ private:
 			_resultPair.first = _formatImplicitBrackets_Funs(_resultPair.first); //This method supports early exit
 
 			if (_resultPair.first.empty())
-				return { "", ErrorCodes::INVALID_FUNCTION_CALL };
+				return { "", ErrorCodes::INVALID_EXPRESSION };
 
 			_resultPair = _formatNestedFuns(_resultPair.first); //This method supports early exit
 
@@ -1157,6 +1157,9 @@ private:
 
 			std::pair<std::string, ErrorCodes> _resultPair = { exp, ErrorCodes::SUCCESS };
 
+			if (exp.find_first_of("fz") != std::string::npos)
+				return { "", ErrorCodes::INVALID_EXPRESSION };
+
 			_resultPair.first = _removeSpaces(_resultPair.first);
 
 			_replaceTokens_lowercase(_resultPair.first);
@@ -1320,10 +1323,10 @@ private:
 				return ErrorCodes::SUCCESS;
 			}
 			else if (_firstFunPos == _partialExpression.length() - 1)
-				return ErrorCodes::INVALID_FUNCTION_CALL;
+				return ErrorCodes::INVALID_EXPRESSION;
 			else {
 				if (_partialExpression[_firstFunPos + 1] != '(')
-					return ErrorCodes::INVALID_FUNCTION_CALL;
+					return ErrorCodes::INVALID_EXPRESSION;
 
 				if ((_respectiveBracketPos = CommonUtils::findRespectiveBracketPos(_partialExpression, _firstFunPos + 1, BracketTypes::REGULAR)) == std::string::npos)
 					return ErrorCodes::INVALID_BRACKETS;
