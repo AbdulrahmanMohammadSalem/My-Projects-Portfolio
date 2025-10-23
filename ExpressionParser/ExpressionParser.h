@@ -946,8 +946,11 @@ private:
 					}
 					case 'e': { //Euler's number/Scientific notation
 						if (i < _exp.length() - 1 && (std::isdigit(_exp[i + 1]) || _exp[i + 1] == '.')) { //Scientific notation
+							if (i == 0 || !(std::isdigit(_exp[i - 1]) || std::string(").efzw").find(_exp[i - 1]) != std::string::npos))
+								return { "", ErrorCodes::INVALID_IMPLICIT_MULTIPLICATION };
+
 							_rightVal = CommonUtils::extractRightValue(_exp, i);
-							_resultPair.first += "10^" + _rightVal; //The multiplication sign is already inserted in _formatImplicitMultiplication
+							_resultPair.first += "*10^" + _rightVal; //The multiplication sign is already inserted in _formatImplicitMultiplication
 
 							i += _rightVal.length(); //The for loop will further increase the i by 1
 						}
@@ -1032,8 +1035,8 @@ private:
 				std::pair<std::string, ErrorCodes> _partialExpressionPair;
 
 				while ((_implicitMultCharPos = _result.find_first_of("(efzw}ABDFGHJKLMNOQRSTUVWXYZ~@{$&_?}\"\\ qonkvh", _implicitMultCharPos)) != std::string::npos) {
-					//Identifying implicit multiplication:
-					if (_implicitMultCharPos > 0 && (std::isdigit(_result[_implicitMultCharPos - 1]) || std::string(").efzw").find(_result[_implicitMultCharPos - 1]) != std::string::npos || (_result[_implicitMultCharPos - 1] == '-' && !(std::isdigit(_exp[_implicitMultCharPos - 1]) || std::string(").!%").find(_exp[_implicitMultCharPos - 1]) != std::string::npos)))) {
+					//Identifying implicit multiplication, discarding scientific notation with small e
+					if (_implicitMultCharPos > 0 && (std::isdigit(_result[_implicitMultCharPos - 1]) || std::string(").efzw").find(_result[_implicitMultCharPos - 1]) != std::string::npos || (_result[_implicitMultCharPos - 1] == '-' && !(std::isdigit(_exp[_implicitMultCharPos - 1]) || std::string(").!%").find(_exp[_implicitMultCharPos - 1]) != std::string::npos))) && _result[_implicitMultCharPos] == 'e' && _implicitMultCharPos < _result.length() - 1 && !(std::isdigit(_result[_implicitMultCharPos + 1]) || _result[_implicitMultCharPos + 1] == '.')) {
 						//Inserting the open bracket:
 						_clonePos = _implicitMultCharPos;
 
@@ -1105,8 +1108,17 @@ private:
 				for (size_t i = 0; i < _exp.length(); i++) {
 					if (std::string("(efzw}").find(_exp[i]) == std::string::npos && _funChars.find(_exp[i]) == std::string::npos)
 						_result += _exp[i];
-					else if (i > 0 && (std::isdigit(_exp[i - 1]) || std::string(").efzw!%").find(_exp[i - 1]) != std::string::npos))
-						_result += std::string(1, '*') + _exp[i];
+					else if (i > 0 && (std::isdigit(_exp[i - 1]) || std::string(").efzw!%").find(_exp[i - 1]) != std::string::npos)) {
+						//Checking for scientific notation with small e -- We shouldn't do anything:
+						if (_exp[i] == 'e' && i < _exp.length() - 1 && (std::isdigit(_exp[i + 1]) || _exp[i + 1] == '.')) {
+							if (_exp[i - 1] == '!' || _exp[i - 1] == '%')
+								return { "", ErrorCodes::INVALID_IMPLICIT_MULTIPLICATION };
+							else
+								_result += 'e';
+						}
+						else
+							_result += std::string(1, '*') + _exp[i];
+					}
 					else
 						_result += _exp[i];
 				}
