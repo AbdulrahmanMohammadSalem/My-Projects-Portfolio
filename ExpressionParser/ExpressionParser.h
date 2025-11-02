@@ -476,7 +476,7 @@ private:
 	private:
 		short _precision;
 		const std::string _funChars = "ABDFGHJKLMNOQRSTUVWXYZ~@{$&_?}\"\\ qonkvh";
-		const std::unordered_map<char, std::string> & _operatorNames; //This must be a reference
+		const std::unordered_map<char, std::string> & _operatorNames; //This must be a reference to preserve some memory
 
 		static std::string _removeSpaces(const std::string & _exp) {
 			std::string _result = "";
