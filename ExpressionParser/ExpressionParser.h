@@ -2204,6 +2204,7 @@ private:
 			return true;
 		}
 
+		//This is the heart of the evaluator, other methods are complementary:
 		double _evaluatePartial(std::string & _partialExpression, const bool _recordSteps, const bool _funCall = false) {
 			if (_evaluationResult != ErrorCodes::SUCCESS) //Force exit
 				return 0;
