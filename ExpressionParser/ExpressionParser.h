@@ -1051,11 +1051,11 @@ private:
 								else
 									return { "", ErrorCodes::INVALID_BRACKETS };
 							}
-							else if (!std::isdigit(_result[_clonePos]) && std::string(".^efzwE}!%").find(_result[_clonePos]) == std::string::npos && _funChars.find(_result[_clonePos]) == std::string::npos) //DON'T PUT P&C IN THE TEMP STRING!
+							else if (!std::isdigit(_result[_clonePos]) && std::string(".^efzw}!%").find(_result[_clonePos]) == std::string::npos && _funChars.find(_result[_clonePos]) == std::string::npos) //DON'T PUT PCE IN THE TEMP STRING -- We won't check for scientific notation shorthand with small e here though
 								break;
 						} while (_clonePos > 0);
 
-						//The cherry on top:
+						//The cherry on top -- Only insert brackets when combined with division to imphasize implicitMult:
 						if (_clonePos == 0 || _result[_clonePos] != '/') {
 							_implicitMultCharPos++;
 							continue; //No need for extra brackets here
@@ -1087,7 +1087,7 @@ private:
 								else
 									return { "", ErrorCodes::INVALID_BRACKETS };
 							}
-							else if (std::isdigit(_result[_clonePos]) || std::string(".^efzwE}!%").find(_result[_clonePos]) != std::string::npos || _funChars.find(_result[_clonePos]) != std::string::npos) //DON'T PUT P&C IN THE TEMP STRING!
+							else if (std::isdigit(_result[_clonePos]) || (std::string(".^efzw}!%").find(_result[_clonePos]) != std::string::npos && ((_result[_clonePos] == 'e' && _clonePos < _result.length() - 1) ? (!std::isdigit(_result[_clonePos + 1]) && _result[_clonePos + 1] != '.') : true)) || _funChars.find(_result[_clonePos]) != std::string::npos) //DON'T PUT PCE IN THE TEMP STRING!
 								_clonePos++;
 							else
 								break;
@@ -1222,7 +1222,7 @@ private:
 
 			if (_resultPair.second != ErrorCodes::SUCCESS)
 				return _resultPair;
-
+			//                    2/3e.3e(1+1)+2
 			_resultPair = _formatImplicitMultiplication(_resultPair.first, implicitMultHighPrec); //This method supports early exit
 
 			if (_resultPair.second != ErrorCodes::SUCCESS)
