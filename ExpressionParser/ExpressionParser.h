@@ -1482,7 +1482,7 @@ private:
 		}
 
 		//With brackets -- This avoids the need to collapse signs after insertion
-		//This doesn't deal with magic chars when normal evaluatiot. But when recording steps, we must handle them externally
+		//This doesn't deal with magic chars when normal evaluation. But when recording steps, we must handle them externally
 		void _insertSubPartialResult(std::string & _partialExpression, const size_t _openBracketPos, const size_t _subPartialExpLength, const double & _subPartialResult) {
 			if (_openBracketPos > 0) { //If the expression doesn't start with the open bracket
 				if (_partialExpression[_openBracketPos - 1] == '+') //If the character before the open bracket is a positive sign
