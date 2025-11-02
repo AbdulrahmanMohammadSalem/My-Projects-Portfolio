@@ -1456,8 +1456,8 @@ private:
 		bool _forceBitwiseLogic;
 		std::string _fullExpression;
 		std::vector<std::pair<std::string, bool>> _evaluationSteps; //This will store the actual string step along with a flag to whether to keep it or not after finishing
-		std::stack<size_t> _overallOperatorPositions; //Stacks enforce nesting naturally -- This will be used to link each evaluation step with the sub-expression and thus sub-partial expression being handled
-		ReplacementTypes _overallReplacementType = ReplacementTypes::OPERATION; //This must be static
+		std::stack<size_t> _overallOperatorPositions; //Stacks enforce nesting naturally -- This will be used to link each evaluation step with the partial expression and thus the sub-partial expression being handled by storing the positions of operators/functions/brackets relative to evaluation steps instead of partial expressions
+		ReplacementTypes _overallReplacementType = ReplacementTypes::OPERATION; //To determine the insertion type when recording steps
 
 		static size_t _findCorrectExponentPos(const std::string & _partialExpression) {
 			size_t _firstPos;
