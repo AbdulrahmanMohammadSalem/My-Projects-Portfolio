@@ -2,7 +2,7 @@
 // Licensed under SALEM PERSONAL-USE LICENSE (SPUL) v1.0.
 // Use: private/personal projects only. No fork/modify/redistribute.
 // Fingerprint: SLM-2025-FP-18A3QE
-// Contact: abdulrahman.mohammad.salem@gmail.com                                                      
+// Contact: abdulrahman.mohammad.salem@gmail.com
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 //                                                                                          //
@@ -18,6 +18,7 @@
 #pragma once
 
 #include <sstream>
+#include <string_view>
 #include <iomanip>
 #include <cmath>
 #include <random>
@@ -170,20 +171,20 @@ private:
 			return _exp.substr(_operationPos + 1, _outerNumPos - _operationPos);
 		}
 
-		//This will extract the value with the sign, unless it's ^PC!% with no magic chars
+		//This will extract the mat with the sign, unless it's ^PC!% with no magic chars
 		static std::string extractLeftValue(const std::string & _exp, const size_t _operatorPos) {
 			if (_operatorPos == 0)
 				return "";
 
 			size_t _outerNumPos = _operatorPos - 1;
 
-			while (_outerNumPos > 0 && (_exp[_outerNumPos] == '.' || std::isdigit(_exp[_outerNumPos]) || std::string("`;:\'j").find(_exp[_outerNumPos - 1]) != std::string::npos))
+			while (_outerNumPos > 0 && (_exp[_outerNumPos] == '.' || std::isdigit(_exp[_outerNumPos]) || std::string_view("`;:\'j").find(_exp[_outerNumPos - 1]) != std::string_view::npos))
 				_outerNumPos--;
 
-			if (std::string("`;:\'j*/^PCiygmubdlpr<=>").find(_exp[_outerNumPos]) != std::string::npos)
+			if (std::string_view("`;:\'j*/^PCiygmubdlpr<=>").find(_exp[_outerNumPos]) != std::string_view::npos)
 				_outerNumPos++;
 
-			if (std::string("^PC!%").find(_exp[_operatorPos]) != std::string::npos && std::string("+-").find(_exp[_outerNumPos]) != std::string::npos && (_outerNumPos == 0 || std::string("`;:\'j").find(_exp[_outerNumPos - 1]) == std::string::npos))
+			if (std::string_view("^PC!%").find(_exp[_operatorPos]) != std::string_view::npos && std::string_view("+-").find(_exp[_outerNumPos]) != std::string_view::npos && (_outerNumPos == 0 || std::string_view("`;:\'j").find(_exp[_outerNumPos - 1]) == std::string_view::npos))
 				_outerNumPos++;
 
 			return _exp.substr(_outerNumPos, _operatorPos - _outerNumPos);
@@ -270,7 +271,7 @@ private:
 						return ErrorCodes::INVALID_OPERATOR_PLACEMENT;
 
 					else if (_exp[i] == ')') {
-						if (_twoOperandOperators.find(_exp[i - 1]) != std::string::npos || std::string("+-`;:\'j").find(_exp[i - 1]) != std::string::npos)
+						if (_twoOperandOperators.find(_exp[i - 1]) != std::string::npos || std::string_view("+-`;:\'j").find(_exp[i - 1]) != std::string::npos)
 							return ErrorCodes::INVALID_OPERATOR_PLACEMENT;
 
 						if (std::isdigit(_exp[i + 1]) || _exp[i + 1] == '.')
@@ -288,7 +289,8 @@ private:
 				return "0";
 			
 			const std::string _funChars = "ABDFGHJKLMNOQRSTUVWXYZ~@{$&_?}\"\\ qonkvh", _magicChars = "`;:\'j", _twoOperandOperators = "*/^PCiygmubdlpr<=>"; //We will not put <=> because they are standalone (they are not associated with a string)
-			std::string _result, _substr;
+			std::ostringstream _result;
+			std::string _substr;
 			size_t _substrLength;
 
 			for (size_t i = 0; i < _exp.length(); i++) {
@@ -301,7 +303,7 @@ private:
 						_substr = extractRightValue(_exp, i + 1); //This will NOT extract the negative sign.
 						_substrLength = _substr.length();
 						_substr = formatExpression(_substr, _operatorNames, _forceDecimalPoints, _forceAsterisks, _useAbsBars, _useSpaces);
-						_result += "(-" + _substr + ')'; //We add the negative sign here.
+						_result << "(-" << _substr << ')'; //We add the negative sign here.
 
 						i += _substrLength + 1;
 					}
@@ -312,23 +314,23 @@ private:
 				else if (std::isdigit(_exp[i])) {
 					if (_forceDecimalPoints) {
 						if ((i == _exp.length() - 1 || (!std::isdigit(_exp[i + 1]) && _exp[i + 1] != '.')) && extractLeftValue(_exp, i).find('.') == std::string::npos)
-							_result += std::string(1, _exp[i]) + ".0";
+							_result << _exp[i] << ".0";
 						else
-							_result += _exp[i];
+							_result << _exp[i];
 					}
 					else
-						_result += _exp[i];
+						_result << _exp[i];
 				}
 
-				else if (std::string("()PC!%").find(_exp[i]) != std::string::npos)
-					_result += _exp[i];
+				else if (std::string_view("()PC!%").find(_exp[i]) != std::string_view::npos)
+					_result << _exp[i];
 
 				else if (_exp[i] == '+') {
 					if (i != 0 && _twoOperandOperators.find(_exp[i - 1]) == std::string::npos && _exp[i - 1] != '(' && _exp[i - 1] != ',') {
 						if (_useSpaces)
-							_result += " + ";
+							_result << " + ";
 						else
-							_result += '+';
+							_result << '+';
 					}
 
 					//Otherwise, we omit the redundant plus sign and continue
@@ -339,135 +341,142 @@ private:
 						_substr = extractRightValue(_exp, i); //This will NOT extract the negative sign.
 						_substrLength = _substr.length();
 						_substr = formatExpression(_substr, _operatorNames, _forceDecimalPoints, _forceAsterisks, _useAbsBars, _useSpaces);
-						_result += "(-" + _substr + ')'; //We add the negative sign here.
+						_result << "(-" << _substr << ')'; //We add the negative sign here.
 
 						i += _substrLength;
 					}
-					else if (i == 0 || _exp[i - 1] == '(' || _exp[i - 1] == ',' || ((_exp[i + 1] == '(' || _exp[i + 1] == 'w') && !std::isdigit(_exp[i - 1]) && std::string(".!%w)").find(_exp[i - 1]) == std::string::npos)) //No need to check if the '-' is not the last char here.
-						_result += '-';
+					else if (i == 0 || _exp[i - 1] == '(' || _exp[i - 1] == ',' || ((_exp[i + 1] == '(' || _exp[i + 1] == 'w') && !std::isdigit(_exp[i - 1]) && std::string_view(".!%w)").find(_exp[i - 1]) == std::string::npos)) //No need to check if the '-' is not the last char here.
+						_result << '-';
 					else {
 						if (_useSpaces)
-							_result += " - ";
+							_result << " - ";
 						else
-							_result += '-';
+							_result << '-';
 					}
 				}
 
-				else if (std::string("/^").find(_exp[i]) != std::string::npos) {
+				else if (std::string_view("/^").find(_exp[i]) != std::string_view::npos) {
 					if (_useSpaces)
-						_result += std::string(1, ' ') + _exp[i] + ' ';
+						_result << ' ' << _exp[i] << ' ';
 					else
-						_result += _exp[i];
+						_result << _exp[i];
 				}
 
 				else if (_exp[i] == '*') {
 					if (_forceAsterisks) {
 						if (_useSpaces)
-							_result += " * ";
+							_result << " * ";
 						else
-							_result += '*';
+							_result << '*';
 					}
 					else {
 						//Implicit multiplication: (decimal points are already formatted before)
 						if (!(_exp[i + 1] == '(' && (std::isdigit(_exp[i - 1]) || _exp[i - 1] == ')' || _exp[i - 1] == 'w')) && !(_exp[i + 1] == 'w' && (std::isdigit(_exp[i - 1]) || _exp[i - 1] == ')'))) {
 							if (_useSpaces)
-								_result += " * ";
+								_result << " * ";
 							else
-								_result += '*';
+								_result << '*';
 						}
 					}
 				}
 
 				else if (_exp[i] == '.') {
 					if (i == 0 || !std::isdigit(_exp[i - 1]))
-						_result += '0'; //This is a must in all cases
+						_result << '0'; //This is a must in all cases
 
 					if (_forceDecimalPoints && (i == _exp.length() - 1 || !std::isdigit(_exp[i + 1])))
-						_result += ".0";
+						_result << ".0";
 					else if (i < _exp.length() - 1 && std::isdigit(_exp[i + 1]))
-						_result += '.';
+						_result << '.';
 
 					//Otherwise, we continue.
 				}
 
-				else if (_exp[i] == '}') { //Absolute value
+				else if (_exp[i] == '}') { //Absolute mat
 					if (_useAbsBars) {
 						_substr = _exp.substr(i + 2, findRespectiveBracketPos(_exp, i + 1, BracketTypes::REGULAR) - i - 2);
 						_substrLength = _substr.length();
 						_substr = formatExpression(_substr, _operatorNames, _forceDecimalPoints, _forceAsterisks, true, _useSpaces);
 
-						_result += std::string(1, '|') + _substr + '|';
+						_result << '|' << _substr << '|';
 						i += _substrLength + 2; //The for loop will then increase the i by one
 					}
 					else
-						_result += "abs";
+						_result << "abs";
 				}
 
 				else if (_funChars.find(_exp[i]) != std::string::npos)
-					_result += _operatorNames.at(_exp[i]);
+					_result << _operatorNames.at(_exp[i]);
 
 				else if (_exp[i] == 'w')
-					_result += 'x';
+					_result << 'x';
 
 				else if (_exp[i] == ',') {
 					if (_useSpaces)
-						_result += ", ";
+						_result << ", ";
 					else
-						_result += ',';
+						_result << ',';
 				}
 
 				else if (_exp[i] == '<' || _exp[i] == '=' || _exp[i] == '>') {
 					if (_useSpaces)
-						_result += std::string(1, ' ') + _exp[i] + ' ';
+						_result << ' ' << _exp[i] << ' ';
 					else
-						_result += _exp[i];
+						_result << _exp[i];
 				}
 
 				else if (_twoOperandOperators.find(_exp[i]) != std::string::npos) { //Other logical operators
 					if (_useSpaces)
-						_result += ' ' + _operatorNames.at(_exp[i]) + ' ';
+						_result << ' ' << _operatorNames.at(_exp[i]) << ' ';
 					else
-						_result += _operatorNames.at(_exp[i]);
+						_result << _operatorNames.at(_exp[i]);
 				}
 
 				else
-					_result += '?'; //For debugging -- Unknown case
+					_result << '?'; //For debugging -- Unknown case
 			}
-
-			return _result;
+			
+			return _result.str();
 		}
 
 		//This avoids the need to collapse signs after plugging in
 		static std::string plugInVal(const std::string & _exp, const double _val, const short _precision) {
-			std::string _result;
+			std::ostringstream _result;
+			std::string foo;
 
 			if (_exp.front() == 'w')
-				_result += CommonUtils::convertDoubleToStr(_val, _precision);
+				_result << CommonUtils::convertDoubleToStr(_val, _precision);
 			else
-				_result += _exp.front();
+				_result << _exp.front();
 
 			for (size_t i = 1; i < _exp.length(); i++) {
 				if (_exp[i] == 'w') {
 					if (_exp[i - 1] == '+') {
-						_result.pop_back();
-						_result += CommonUtils::convertDoubleToStr(_val, _precision);
+						foo = _result.str();
+						foo.pop_back();
+						_result.str(foo);
+
+						_result << CommonUtils::convertDoubleToStr(_val, _precision);
 					}
 					else if (_exp[i - 1] == '-') {
 						if (_val >= 0)
-							_result += CommonUtils::convertDoubleToStr(_val, _precision, false);
+							_result << CommonUtils::convertDoubleToStr(_val, _precision, false);
 						else {
-							_result.pop_back();
-							_result += CommonUtils::convertDoubleToStr(-_val, _precision);
+							foo = _result.str();
+							foo.pop_back();
+							_result.str(foo);
+							
+							_result << CommonUtils::convertDoubleToStr(-_val, _precision);
 						}
 					}
 					else
-						_result += CommonUtils::convertDoubleToStr(_val, _precision);
+						_result << CommonUtils::convertDoubleToStr(_val, _precision);
 				}
 				else
-					_result += _exp[i];
+					_result << _exp[i];
 			}
 
-			return _result;
+			return _result.str();
 		}
 
 	};
@@ -479,13 +488,13 @@ private:
 		const std::unordered_map<char, std::string> & _operatorNames; //This must be a reference to preserve some memory
 
 		static std::string _removeSpaces(const std::string & _exp) {
-			std::string _result = "";
+			std::ostringstream _result;
 
 			for (const char C : _exp)
 				if (C != ' ')
-					_result += C;
+					_result << C;
 
-			return _result;
+			return _result.str();
 		}
 
 		void _replaceTokens_lowercase(std::string & _exp) {
@@ -494,28 +503,28 @@ private:
 		}
 
 		static std::string _collapseAddSubSigns(const std::string & _exp) {
-			std::string _result = "";
+			std::ostringstream _result;
 			size_t _minusCounter = 0;
 
 			for (size_t i = 0; i < _exp.length(); i++) {
 				if (_exp[i] != '+' && _exp[i] != '-')
-					_result += _exp[i];
+					_result << _exp[i];
 				else {
 					for (i; _exp[i] == '+' || _exp[i] == '-'; i++)
 						if (_exp[i] == '-')
 							_minusCounter++;
 
 					if (_minusCounter % 2) //If odd
-						_result += '-';
+						_result << '-';
 					else
-						_result += '+';
+						_result << '+';
 
 					_minusCounter = 0;
 					i--;
 				}
 			}
 
-			return _result;
+			return _result.str();
 		}
 
 		static std::string _formatDecimalPoints(const std::string & _exp) {
@@ -526,42 +535,42 @@ private:
 					return _exp;
 			}
 
-			std::string _result = "";
+			std::ostringstream _result;
 
 			if (_exp.front() == '.') {
 				if (std::isdigit(_exp[1]))
-					_result += '.';
-				else if (_exp[1] == '.' || std::string("efzx").find(_exp[1]) != std::string::npos)
+					_result << '.';
+				else if (_exp[1] == '.' || std::string_view("efzx").find(_exp[1]) != std::string::npos)
 					return "";
 				else
-					_result += '0';
+					_result << '0';
 			}
 			else
-				_result += _exp.front();
+				_result << _exp.front();
 
 			for (size_t i = 1; i < _exp.length() - 1; i++) {
 				if (_exp[i] == '.') {
-					if (std::string("fzx)!%").find(_exp[i - 1]) != std::string::npos || std::string("efzx").find(_exp[i + 1]) != std::string::npos) //DON'T INCLUDE e HERE, BECAUSE IT'D MEAN SCIENTIFIC NOTATION
+					if (std::string_view("fzx)!%").find(_exp[i - 1]) != std::string_view::npos || std::string_view("efzx").find(_exp[i + 1]) != std::string::npos) //DON'T INCLUDE e HERE, BECAUSE IT'D MEAN SCIENTIFIC NOTATION
 						return "";
 					if (!(std::isdigit(_exp[i - 1]) || _exp[i - 1] == '.' || std::isdigit(_exp[i + 1]) || _exp[i + 1] == '.'))
-						_result += '0';
+						_result << '0';
 					else
-						_result += '.'; //Might be rejected later
+						_result << '.'; //Might be rejected later
 				}
 				else
-					_result += _exp[i];
+					_result << _exp[i];
 			}
 
 			if (_exp.back() == '.') {
 				if (!std::isdigit(_exp[_exp.length() - 2]) && _exp[_exp.length() - 2] != '.')
-					_result += '0';
+					_result << '0';
 				else
 					return "";
 			}
 			else
-				_result += _exp.back();
+				_result << _exp.back();
 
-			return _result;
+			return _result.str();
 		}
 
 		static std::string _replaceAll(std::string _str, const std::string & _replaceFrom, const std::string & _replaceTo) {
@@ -638,7 +647,7 @@ private:
 			std::vector<size_t> _vAmbiguous;
 
 			while ((i = _exp.find('|', i + 1)) != std::string::npos && i < j) {
-				if (_exp[i - 1] == '[' || _forbiddenChars.find(_exp[i - 1]) != std::string::npos || std::string("+-").find(_exp[i - 1]) != std::string::npos || _funChars.find(_exp[i - 1]) != std::string::npos) { //Must NOT be closed
+				if (_exp[i - 1] == '[' || _forbiddenChars.find(_exp[i - 1]) != std::string::npos || std::string_view("+-").find(_exp[i - 1]) != std::string_view::npos || _funChars.find(_exp[i - 1]) != std::string::npos) { //Must NOT be closed
 					if (_forbiddenChars.find(_exp[i + 1]) != std::string::npos) {//Must NOT be opened
 						if (_exp[i + 1] == ',')
 							return { "", ErrorCodes::INVALID_EXPRESSION };
@@ -664,7 +673,7 @@ private:
 
 			}
 
-			if (_exp[j - 1] == '[' || _forbiddenChars.find(_exp[j - 1]) != std::string::npos || std::string("+-").find(_exp[j - 1]) != std::string::npos || _funChars.find(_exp[j - 1]) != std::string::npos) //Must NOT be closed
+			if (_exp[j - 1] == '[' || _forbiddenChars.find(_exp[j - 1]) != std::string::npos || std::string_view("+-").find(_exp[j - 1]) != std::string::npos || _funChars.find(_exp[j - 1]) != std::string::npos) //Must NOT be closed
 				return { "", ErrorCodes::INVALID_EXPRESSION };
 
 			_exp[j] = ']';
@@ -742,17 +751,17 @@ private:
 				}
 				else if (_exp[_mostInnerFunPos] == '?' || _exp[_mostInnerFunPos] == '\"') //Those require an open bracket anyways
 					return "";
-				else if (std::isdigit(_exp[_clonePos]) || std::string(".+-efzxE").find(_exp[_clonePos]) != std::string::npos) {
+				else if (std::isdigit(_exp[_clonePos]) || std::string_view(".+-efzxE").find(_exp[_clonePos]) != std::string_view::npos) {
 					_exp.insert(_exp.begin() + _clonePos, '(');
 					_clonePos++; //The _clonePos is now on the character directly after the open bracket of the function
 
 					if (_exp[_clonePos] == '+' || _exp[_clonePos] == '-')
 						_clonePos++;
 
-					while (_clonePos < _exp.length() && (std::isdigit(_exp[_clonePos]) || std::string(".efzxE^!%").find(_exp[_clonePos]) != std::string::npos)) {
+					while (_clonePos < _exp.length() && (std::isdigit(_exp[_clonePos]) || std::string_view(".efzxE^!%").find(_exp[_clonePos]) != std::string::npos)) {
 						_clonePos++;
 
-						if (_exp[_clonePos] == 'E' && std::string("+-").find(_exp[_clonePos + 1]) != std::string::npos)
+						if (_exp[_clonePos] == 'E' && std::string_view("+-").find(_exp[_clonePos + 1]) != std::string_view::npos)
 							_clonePos += 2; //To skip the sign
 					}
 
@@ -769,8 +778,8 @@ private:
 
 								_clonePos += 2;
 							}
-							else if ((std::isdigit(_exp[_clonePos]) || std::string(".efzxE").find(_exp[_clonePos]) != std::string::npos) && _exp[_clonePos - 1] == '^') {
-								while (std::isdigit(_exp[_clonePos]) || std::string(".efzxE").find(_exp[_clonePos]) != std::string::npos)
+							else if ((std::isdigit(_exp[_clonePos]) || std::string_view(".efzxE").find(_exp[_clonePos]) != std::string_view::npos) && _exp[_clonePos - 1] == '^') {
+								while (std::isdigit(_exp[_clonePos]) || std::string_view(".efzxE").find(_exp[_clonePos]) != std::string_view::npos)
 									_clonePos++;
 
 								_clonePos++;
@@ -808,9 +817,9 @@ private:
 				size_t _clonePos = _firstFunPos + 1;
 				std::pair<std::string, ErrorCodes> _partialExpressionPair;
 
-				if (std::isdigit(_exp[_clonePos]) || _funChars.find(_exp[_clonePos]) != std::string::npos || std::string(".+-(").find(_exp[_clonePos]) != std::string::npos) {
+				if (std::isdigit(_exp[_clonePos]) || _funChars.find(_exp[_clonePos]) != std::string::npos || std::string_view(".+-(").find(_exp[_clonePos]) != std::string::npos) {
 					//Extracting _partialExpression
-					while (true) { //This will get the correct value of _clonePos to get the length of _partialExpression
+					while (true) { //This will get the correct mat of _clonePos to get the length of _partialExpression
 						if (_funChars.find(_exp[_clonePos]) != std::string::npos)
 							_clonePos++;
 
@@ -823,7 +832,7 @@ private:
 								break;
 						}
 
-						else if (std::isdigit(_exp[_clonePos]) || std::string(".+-").find(_exp[_clonePos]) != std::string::npos) {
+						else if (std::isdigit(_exp[_clonePos]) || std::string_view(".+-").find(_exp[_clonePos]) != std::string_view::npos) {
 							_clonePos += CommonUtils::extractRightValue(_exp, _clonePos - 1).length() - 1;
 							break;
 						}
@@ -904,16 +913,16 @@ private:
 		}
 
 		static std::string _replaceXs(const std::string & _exp) {
-			std::string _result;
+			std::ostringstream _result;
 
 			for (const char C : _exp) {
 				if (C == 'x')
-					_result += 'w';
+					_result << 'w';
 				else
-					_result += C;
+					_result << C;
 			}
 				
-			return _result;
+			return _result.str();
 		}
 
 		std::pair<std::string, ErrorCodes> _formatConstants_ScientificNotation(std::string & _exp) {
@@ -924,7 +933,7 @@ private:
 			const double _pi = 3.14159265358979324;
 			const double _e = 2.71828182845904524;
 			std::string _rightVal;
-			std::pair<std::string, ErrorCodes> _resultPair = { "", ErrorCodes::SUCCESS };
+			std::ostringstream _result;
 
 			if (_exp[0] == 'E')
 				return { "", ErrorCodes::INVALID_SCIENTIFIC_NOTATION };
@@ -932,66 +941,66 @@ private:
 			for (size_t i = 0; i < _exp.length(); i++) {
 				switch (_exp[i]) {
 					case 'f': { //Pi
-						_resultPair.first += CommonUtils::convertDoubleToStr(_pi, _precision, false);
+						_result << CommonUtils::convertDoubleToStr(_pi, _precision, false);
 
 						if (i < _exp.length() - 1) {
 							if (std::isdigit(_exp[i + 1]) || _exp[i + 1] == '.')
 								return { "", ErrorCodes::INVALID_IMPLICIT_MULTIPLICATION };
 
 							if (_funChars.find(_exp[i + 1]) != std::string::npos) //Implicit multiplication with functions
-								_resultPair.first += '*';
+								_result << '*';
 						}
 
 						break;
 					}
 					case 'e': { //Euler's number/Scientific notation
 						if (i < _exp.length() - 1 && (std::isdigit(_exp[i + 1]) || _exp[i + 1] == '.')) { //Scientific notation
-							if (i == 0 || !(std::isdigit(_exp[i - 1]) || std::string(").efzw").find(_exp[i - 1]) != std::string::npos))
+							if (i == 0 || !(std::isdigit(_exp[i - 1]) || std::string_view(").efzw").find(_exp[i - 1]) != std::string::npos))
 								return { "", ErrorCodes::INVALID_IMPLICIT_MULTIPLICATION };
 
 							_rightVal = CommonUtils::extractRightValue(_exp, i);
-							_resultPair.first += "*10^" + _rightVal; //The multiplication sign is already inserted in _formatImplicitMultiplication
+							_result << "*10^" << _rightVal; //The multiplication sign is already inserted in _formatImplicitMultiplication
 
 							i += _rightVal.length(); //The for loop will further increase the i by 1
 						}
 						else { //Euler's number
-							_resultPair.first += CommonUtils::convertDoubleToStr(_e, _precision, false);
+							_result << CommonUtils::convertDoubleToStr(_e, _precision, false);
 
 							if (i < _exp.length() - 1 && _funChars.find(_exp[i + 1]) != std::string::npos) //Implicit multiplication with functions
-								_resultPair.first += '*';
+								_result << '*';
 						}
 
 						break;
 					}
 					case 'E': { //Scientific notation
-						if (!std::isdigit(_exp[i - 1]) && std::string(").efzw").find(_exp[i - 1]) == std::string::npos)
+						if (!std::isdigit(_exp[i - 1]) && std::string_view(").efzw").find(_exp[i - 1]) == std::string_view::npos)
 							return { "", ErrorCodes::INVALID_SCIENTIFIC_NOTATION };
 
-						_resultPair.first += "*10^" + _rightVal; //The multiplication sign is already inserted in _formatImplicitMultiplication
+						_result << "*10^" << _rightVal; //The multiplication sign is already inserted in _formatImplicitMultiplication
 
 						break;
 					}
 					case 'z': { //Random number
-						_resultPair.first += CommonUtils::convertDoubleToStr(dist(gen), _precision, false);
+						_result << CommonUtils::convertDoubleToStr(dist(gen), _precision, false);
 
 						if (i < _exp.length() - 1) {
 							if (std::isdigit(_exp[i + 1]) || _exp[i + 1] == '.')
 								return { "", ErrorCodes::INVALID_IMPLICIT_MULTIPLICATION };
 
 							if (_funChars.find(_exp[i + 1]) != std::string::npos) //Implicit multiplication with functions
-								_resultPair.first += '*';
+								_result << '*';
 						}
 
 						break;
 					}
 					default: {
-						_resultPair.first += _exp[i];
+						_result << _exp[i];
 						break;
 					}
 				}
 			}
 
-			return _resultPair;
+			return { _result.str(), ErrorCodes::SUCCESS };
 		}
 
 		std::pair<std::string, ErrorCodes> _formatUnaryMinus_PC(std::string & _exp) {
@@ -1013,7 +1022,7 @@ private:
 							_leftOperandStartPos--;
 
 						//Identifying unary minus before the left operand:
-						if (_leftOperandStartPos > 0 && _exp[_leftOperandStartPos - 1] == '-' && (_leftOperandStartPos == 1 || !(std::isdigit(_exp[_leftOperandStartPos - 2]) || std::string(").!%").find(_exp[_leftOperandStartPos - 2]) != std::string::npos))) {
+						if (_leftOperandStartPos > 0 && _exp[_leftOperandStartPos - 1] == '-' && (_leftOperandStartPos == 1 || !(std::isdigit(_exp[_leftOperandStartPos - 2]) || std::string_view(").!%").find(_exp[_leftOperandStartPos - 2]) != std::string::npos))) {
 							_exp.insert(_exp.begin() + _leftOperandStartPos - 1, '(');
 							_exp.insert(_exp.begin() + ++_operatorPos, ')');
 						}
@@ -1027,16 +1036,14 @@ private:
 		}
 
 		std::pair<std::string, ErrorCodes> _formatImplicitMultiplication(const std::string & _exp, const bool _implicitMultHighPrec) {
-			std::string _result;
-
 			if (_implicitMultHighPrec) { //Giving higher precedence:
-				_result = _exp;
+				std::string _result = _exp;
 				size_t _implicitMultCharPos = 0, _clonePos, _partialExpressionPos, _partialExpressionLength;
 				std::pair<std::string, ErrorCodes> _partialExpressionPair;
 
 				while ((_implicitMultCharPos = _result.find_first_of("(efzw}ABDFGHJKLMNOQRSTUVWXYZ~@{$&_?}\"\\ qonkvh", _implicitMultCharPos)) != std::string::npos) {
 					//Identifying implicit multiplication, discarding scientific notation with small e
-					if (_implicitMultCharPos > 0 && (std::isdigit(_result[_implicitMultCharPos - 1]) || std::string(").efzw").find(_result[_implicitMultCharPos - 1]) != std::string::npos || (_result[_implicitMultCharPos - 1] == '-' && !(std::isdigit(_exp[_implicitMultCharPos - 1]) || std::string(").!%").find(_exp[_implicitMultCharPos - 1]) != std::string::npos))) && _result[_implicitMultCharPos] == 'e' && _implicitMultCharPos < _result.length() - 1 && !(std::isdigit(_result[_implicitMultCharPos + 1]) || _result[_implicitMultCharPos + 1] == '.')) {
+					if (_implicitMultCharPos > 0 && (std::isdigit(_result[_implicitMultCharPos - 1]) || std::string_view(").efzw").find(_result[_implicitMultCharPos - 1]) != std::string_view::npos || (_result[_implicitMultCharPos - 1] == '-' && !(std::isdigit(_exp[_implicitMultCharPos - 1]) || std::string_view(").!%").find(_exp[_implicitMultCharPos - 1]) != std::string::npos))) && _result[_implicitMultCharPos] == 'e' && _implicitMultCharPos < _result.length() - 1 && !(std::isdigit(_result[_implicitMultCharPos + 1]) || _result[_implicitMultCharPos + 1] == '.')) {
 						//Inserting the open bracket:
 						_clonePos = _implicitMultCharPos;
 
@@ -1051,7 +1058,7 @@ private:
 								else
 									return { "", ErrorCodes::INVALID_BRACKETS };
 							}
-							else if (!std::isdigit(_result[_clonePos]) && std::string(".^efzw}!%").find(_result[_clonePos]) == std::string::npos && _funChars.find(_result[_clonePos]) == std::string::npos) //DON'T PUT PCE IN THE TEMP STRING -- We won't check for scientific notation shorthand with small e here though
+							else if (!std::isdigit(_result[_clonePos]) && std::string_view(".^efzw}!%").find(_result[_clonePos]) == std::string_view::npos && _funChars.find(_result[_clonePos]) == std::string::npos) //DON'T PUT PCE IN THE TEMP STRING -- We won't check for scientific notation shorthand with small e here though
 								break;
 						} while (_clonePos > 0);
 
@@ -1087,7 +1094,7 @@ private:
 								else
 									return { "", ErrorCodes::INVALID_BRACKETS };
 							}
-							else if (std::isdigit(_result[_clonePos]) || (std::string(".^efzw}!%").find(_result[_clonePos]) != std::string::npos && ((_result[_clonePos] == 'e' && _clonePos < _result.length() - 1) ? (!std::isdigit(_result[_clonePos + 1]) && _result[_clonePos + 1] != '.') : true)) || _funChars.find(_result[_clonePos]) != std::string::npos) //DON'T PUT PCE IN THE TEMP STRING!
+							else if (std::isdigit(_result[_clonePos]) || (std::string_view(".^efzw}!%").find(_result[_clonePos]) != std::string::npos && ((_result[_clonePos] == 'e' && _clonePos < _result.length() - 1) ? (!std::isdigit(_result[_clonePos + 1]) && _result[_clonePos + 1] != '.') : true)) || _funChars.find(_result[_clonePos]) != std::string::npos) //DON'T PUT PCE IN THE TEMP STRING!
 								_clonePos++;
 							else
 								break;
@@ -1105,25 +1112,27 @@ private:
 				return _formatImplicitMultiplication(_result, false);
 			}
 			else { //Giving normal precendence && multiplication signs
+				std::ostringstream _result;
+
 				for (size_t i = 0; i < _exp.length(); i++) {
-					if (std::string("(efzw}").find(_exp[i]) == std::string::npos && _funChars.find(_exp[i]) == std::string::npos)
-						_result += _exp[i];
-					else if (i > 0 && (std::isdigit(_exp[i - 1]) || std::string(").efzw!%").find(_exp[i - 1]) != std::string::npos)) {
+					if (std::string_view("(efzw}").find(_exp[i]) == std::string_view::npos && _funChars.find(_exp[i]) == std::string::npos)
+						_result << _exp[i];
+					else if (i > 0 && (std::isdigit(_exp[i - 1]) || std::string_view(").efzw!%").find(_exp[i - 1]) != std::string::npos)) {
 						//Checking for scientific notation with small e -- We shouldn't do anything:
 						if (_exp[i] == 'e' && i < _exp.length() - 1 && (std::isdigit(_exp[i + 1]) || _exp[i + 1] == '.')) {
 							if (_exp[i - 1] == '!' || _exp[i - 1] == '%')
 								return { "", ErrorCodes::INVALID_IMPLICIT_MULTIPLICATION };
 							else
-								_result += 'e';
+								_result << 'e';
 						}
 						else
-							_result += std::string(1, '*') + _exp[i];
+							_result << '*' << _exp[i];
 					}
 					else
-						_result += _exp[i];
+						_result << _exp[i];
 				}
 
-				return { _result, ErrorCodes::SUCCESS };
+				return { _result.str(), ErrorCodes::SUCCESS};
 			}
 		}
 
@@ -1137,7 +1146,7 @@ private:
 				while (_clonePos > 0 && (std::isdigit(_exp[_clonePos]) || _exp[_clonePos] == '.'))
 					_clonePos--;
 
-				if (_exp[_clonePos] == '-' && (_clonePos == 0 || !(std::isdigit(_exp[_clonePos - 1]) || std::string(").!%").find(_exp[_clonePos - 1]) != std::string::npos))) {
+				if (_exp[_clonePos] == '-' && (_clonePos == 0 || !(std::isdigit(_exp[_clonePos - 1]) || std::string_view(").!%").find(_exp[_clonePos - 1]) != std::string_view::npos))) {
 					_exp.insert(_exp.begin() + _clonePos, '(');
 					_exp.insert(_exp.begin() + _operatorPos + 1, ')'); //We add 1 because of the open bracket inserted
 
@@ -1158,7 +1167,7 @@ private:
 					if ((_openBracketPos = CommonUtils::findRespectiveBracketPos(_exp, _nextOperatorPos - 1, BracketTypes::REGULAR)) == std::string::npos)
 						return ErrorCodes::INVALID_BRACKETS;
 
-					if (_openBracketPos == 0 || (_funChars.find(_exp[_openBracketPos - 1]) == std::string::npos && std::string("PC").find(_exp[_openBracketPos - 1]) == std::string::npos)) {
+					if (_openBracketPos == 0 || (_funChars.find(_exp[_openBracketPos - 1]) == std::string::npos && std::string_view("PC").find(_exp[_openBracketPos - 1]) == std::string::npos)) {
 						_exp.insert(_exp.begin() + _openBracketPos, CommonUtils::getMagicCharacter(_exp[_nextOperatorPos]));
 
 						_nextOperatorPos += 2;
@@ -1468,7 +1477,7 @@ private:
 				do {
 					_clonePos++;
 
-					while (std::isdigit(_partialExpression[_clonePos]) || std::string("+-.`;:\'j").find(_partialExpression[_clonePos]) != std::string::npos)
+					while (std::isdigit(_partialExpression[_clonePos]) || std::string_view("+-.`;:\'j").find(_partialExpression[_clonePos]) != std::string_view::npos)
 						_clonePos++;
 
 					if (_partialExpression[_clonePos] == '^')
@@ -1503,7 +1512,7 @@ private:
 		//Without brackets -- This avoids the need to collapse signs after insertion
 		void _insertSubPartialResult(std::string & _partialExpression, const size_t _operationPos, const std::string & _num1, const std::string & _num2, const double _subPartialResult) {
 			if (_operationPos > _num1.length()) { //If the expression doesn't start with _num1
-				if (std::string("`;:\'j").find(_partialExpression[_operationPos - _num1.length() - 1]) != std::string::npos) { //If there's a magic character directly before _num1
+				if (std::string_view("`;:\'j").find(_partialExpression[_operationPos - _num1.length() - 1]) != std::string::npos) { //If there's a magic character directly before _num1
 					if (_operationPos - _num1.length() >= 2) { //If there is a character before the magic character
 						if (_partialExpression[_operationPos - _num1.length() - 2] == '+') //If there's a positive sign before the magic character
 							_partialExpression.replace(_operationPos - _num1.length() - 2, _num1.length() + _num2.length() + 3, CommonUtils::convertDoubleToStr(_subPartialResult, _precision));
@@ -1521,7 +1530,7 @@ private:
 				}
 				else { //If there's not a magic character directly before _num1
 					if (_num1.front() == '+' || _num1.front() == '-') { //If _num1 was extracted with the sign
-						if (std::string("*/+-").find(_partialExpression[_operationPos]) != std::string::npos) //If the operation is +-*/
+						if (std::string_view("*/+-").find(_partialExpression[_operationPos]) != std::string_view::npos) //If the operation is +-*/
 							_partialExpression.replace(_operationPos - _num1.length(), _num1.length() + _num2.length() + 1, CommonUtils::convertDoubleToStr(_subPartialResult, _precision));
 						else { //If the operation is other than +-*/
 							if (_num1.front() == '-') { //If _num1 is negative
@@ -2179,13 +2188,13 @@ private:
 			bool _hasFound = false;
 			size_t i = 0;
 
-			if ((_exp.front() == '+' || _exp.front() == '-') && i < _exp.length() - 1 && std::string("`;:\'j").find(_exp[i + 1]) == std::string::npos)
+			if ((_exp.front() == '+' || _exp.front() == '-') && i < _exp.length() - 1 && std::string_view("`;:\'j").find(_exp[i + 1]) == std::string::npos)
 				i++;
 
 			for (i; i < _exp.length(); i++) {
 				if (_operations.find(_exp[i]) != std::string::npos || _funChars.find(_exp[i]) != std::string::npos || (i > 0 && _exp[i] == '(' && _funChars.find(_exp[i - 1]) == std::string::npos)) {
 					if (i < _exp.length() - 1) {
-						if (std::string("`;:\'j").find(_exp[i]) != std::string::npos && (_exp[i + 1] == '+' || _exp[i + 1] == '-')) { //Skip the magic character and the sign after it
+						if (std::string_view("`;:\'j").find(_exp[i]) != std::string_view::npos && (_exp[i + 1] == '+' || _exp[i + 1] == '-')) { //Skip the magic character and the sign after it
 							i++;
 							continue;
 						}
@@ -2240,7 +2249,7 @@ private:
 
 						_closedBracketPos = _subPartialExpression.length(); //I needed to save the length of _subPartialExpression for later, so I used this variable instead of creating a new one and consume more memory :-)
 
-						const bool _updateLastExp = CommonUtils::isNumericalValue(_subPartialExpression); //Because _evaluatePartial will not touch _evaluationSteps in case of _subPartialResult is a numerical value, we will update it here explicity
+						const bool _updateLastExp = CommonUtils::isNumericalValue(_subPartialExpression); //Because _evaluatePartial will not touch _evaluationSteps in case of _subPartialResult is a numerical mat, we will update it here explicity
 
 						if (_recordSteps)
 							_subPartialResult = _evaluatePartial(_subPartialExpression, _recordSteps, _overallOperatorPositions.top() != std::string::npos && _overallOperatorPositions.top() > 0 && _funChars.find(_evaluationSteps.back().first[_overallOperatorPositions.top() - 1]) != std::string::npos);
@@ -2253,7 +2262,7 @@ private:
 							std::string _lastExp = _evaluationSteps.back().first;
 							_subPartialExpression = _lastExp.substr(_overallOperatorPositions.top() + 1, CommonUtils::findRespectiveBracketPos(_lastExp, _overallOperatorPositions.top(), BracketTypes::REGULAR) - _overallOperatorPositions.top() - 1);
 
-							//We don't need to check the evaluation result here, because the bracket contains only one value -- To also deal with redundant brackets:
+							//We don't need to check the evaluation result here, because the bracket contains only one mat -- To also deal with redundant brackets:
 							if (_updateLastExp || CommonUtils::isNumericalValue(_subPartialExpression)) { //We must re-check that for specific cases
 								_insertSubPartialResult(_lastExp, _overallOperatorPositions.top(), _subPartialExpression.length(), _subPartialResult);
 								_evaluationSteps.push_back({ _lastExp, false }); //To not show this redundant step in the final vector, but still be consistent with the internal processes
@@ -2277,7 +2286,7 @@ private:
 					_overallOperatorPositions.push(_overallOperatorPositions.top() + _operatorPos + 2); //To stand on the open bracket of the function
 
 				//To insert magic characters with ^PC!% before the function call
-				if (_closedBracketPos < _partialExpression.length() - 1 && std::string("^PC!%").find(_partialExpression[_closedBracketPos + 1]) != std::string::npos) {
+				if (_closedBracketPos < _partialExpression.length() - 1 && std::string_view("^PC!%").find(_partialExpression[_closedBracketPos + 1]) != std::string::npos) {
 					_partialExpression.insert(_partialExpression.begin() + _operatorPos, CommonUtils::getMagicCharacter(_partialExpression[_closedBracketPos + 1]));
 
 					if (_recordSteps) { //To update the _partialExpression
@@ -2294,11 +2303,11 @@ private:
 				_closedBracketPos = _subPartialExpression.length(); //I needed to save the length of _subPartialExpression for later, so I used this variable instead of creating a new one and consume more memory :-)
 
 				//Trigonometric functions:
-				if (std::string("WXYZ~@").find(_partialExpression[_operatorPos]) != std::string::npos)
+				if (std::string_view("WXYZ~@").find(_partialExpression[_operatorPos]) != std::string_view::npos)
 					_subPartialResult = _calculate_OneArgument(_convertToRadian(_evaluatePartial(_subPartialExpression, _recordSteps, true)), _partialExpression[_operatorPos]);
 
 				//Two-argument functions (nthrt,ranInt,log,mod):
-				else if (std::string("?\"{h").find(_partialExpression[_operatorPos]) != std::string::npos) {
+				else if (std::string_view("?\"{h").find(_partialExpression[_operatorPos]) != std::string::npos) {
 					size_t _commaPos = CommonUtils::findFirstCommaPos(_subPartialExpression);
 
 					//One-argument log:
@@ -2327,7 +2336,7 @@ private:
 				}
 
 				//Three-argument functions (sum,prod):
-				else if (std::string("kv").find(_partialExpression[_operatorPos]) != std::string::npos) {
+				else if (std::string_view("kv").find(_partialExpression[_operatorPos]) != std::string_view::npos) {
 					size_t _commasPos[2];
 
 					_commasPos[0] = CommonUtils::findFirstCommaPos(_subPartialExpression);
@@ -2381,7 +2390,7 @@ private:
 				if (_recordSteps)
 					_overallOperatorPositions.push(_overallOperatorPositions.top() + _operatorPos + 1);
 
-				std::string _num = CommonUtils::extractLeftValue(_partialExpression, _operatorPos); //This will extract the value with the sign, unless there's no magic chars
+				std::string _num = CommonUtils::extractLeftValue(_partialExpression, _operatorPos); //This will extract the mat with the sign, unless there's no magic chars
 
 				_subPartialResult = _calculate_OneArgument(std::stod(_num), _partialExpression[_operatorPos]);
 
@@ -2416,7 +2425,7 @@ private:
 			if (_operatorPos == std::string::npos) { //BE CAREFUL NOT TO ADD `else`
 				size_t _searchFrom = 0;
 
-				if (std::string("+-").find(_partialExpression.front()) != std::string::npos)
+				if (std::string_view("+-").find(_partialExpression.front()) != std::string::npos)
 					_searchFrom++;
 
 				//The validation below is special only for +- because they can follow any other operator directly
@@ -2424,7 +2433,7 @@ private:
 				do {
 					_operatorPos = _partialExpression.find_first_of("+-", _searchFrom);
 					_searchFrom += _operatorPos + 1;
-				} while (_operatorPos != std::string::npos && std::string("iygmubdlpr<=>").find(_partialExpression[_operatorPos - 1]) != std::string::npos);
+				} while (_operatorPos != std::string::npos && std::string_view("iygmubdlpr<=>").find(_partialExpression[_operatorPos - 1]) != std::string_view::npos);
 			}
 
 			//Bitwise Shift Operators:
@@ -2455,7 +2464,7 @@ private:
 			}
 
 			//Extracting _num1:
-			std::string _num1 = CommonUtils::extractLeftValue(_partialExpression, _operatorPos); //This will extract the value with the sign, unless it's ^PC with no magic chars
+			std::string _num1 = CommonUtils::extractLeftValue(_partialExpression, _operatorPos); //This will extract the mat with the sign, unless it's ^PC with no magic chars
 
 			//Extracting _num2:
 			std::string _num2 = CommonUtils::extractRightValue(_partialExpression, _operatorPos);
@@ -2470,9 +2479,9 @@ private:
 				if (_overallOperatorPositions.size() > 1) {
 					if (_overallReplacementType == ReplacementTypes::BRACKET) {
 						if (_funCall) //If it is a function call, we keep the brackets.
-							_lastExp.replace(_overallOperatorPositions.top() + 1, _num1.length() + _num2.length() + (std::string("`;:\'j").find(_lastExp[_overallOperatorPositions.top() + 1]) != std::string::npos ? 2 : 1), CommonUtils::convertDoubleToStr(_subPartialResult, _precision)); //We must keep the sign to be consistent with _partialExpression because it'll be the vallue of _subPartialExpression later
+							_lastExp.replace(_overallOperatorPositions.top() + 1, _num1.length() + _num2.length() + (std::string_view("`;:\'j").find(_lastExp[_overallOperatorPositions.top() + 1]) != std::string_view::npos ? 2 : 1), CommonUtils::convertDoubleToStr(_subPartialResult, _precision)); //We must keep the sign to be consistent with _partialExpression because it'll be the vallue of _subPartialExpression later
 						else
-							_insertSubPartialResult(_lastExp, _overallOperatorPositions.top(), _num1.length() + _num2.length() + (std::string("`;:\'j").find(_lastExp[_overallOperatorPositions.top() + 1]) != std::string::npos ? 2 : 1), _subPartialResult);
+							_insertSubPartialResult(_lastExp, _overallOperatorPositions.top(), _num1.length() + _num2.length() + (std::string_view("`;:\'j").find(_lastExp[_overallOperatorPositions.top() + 1]) != std::string_view::npos ? 2 : 1), _subPartialResult);
 					}
 					else
 						_insertSubPartialResult(_lastExp, _overallOperatorPositions.top(), _num1, _num2, _subPartialResult);
@@ -2631,7 +2640,7 @@ public:
 
 	//* This controls the precision of the results, internal calculations, and formatted expressions.
 	//* It will get clamped between [0,17]
-	//* Default value: 6 digits after the decimal point
+	//* Default mat: 6 digits after the decimal point
 	void setPrecision(const short precision) {
 		_precision = _clampNumberBetween(precision, 0, 17);
 
@@ -2645,7 +2654,7 @@ public:
 	}
 
 	//* This is used when calculating trigonometric and inverse trigonometric functions.
-	//* Default value: RADIAN.
+	//* Default mat: RADIAN.
 	void setAngleUnit(const AngleUnits angleUnit) {
 		_angleUnit = angleUnit;
 	}
@@ -2657,7 +2666,7 @@ public:
 	//* This controls whether implicit multiplication (juxtaposition) binds more tightly than standard left-to-right evaluation.
 	//* If true, it will give higher precedence over division. Otherwise, it will not.
 	//* This doesn't affect functions with implicit brackets, they have their own rules.
-	//* Defualt value: false
+	//* Defualt mat: false
 	void setImplicitMultHighPrec(const bool implicitMultHighPrec) {
 		_implicitMultHighPrec = implicitMultHighPrec;
 
@@ -2672,13 +2681,13 @@ public:
 
 	//* This controls the behavior of logical operators.
 	//* If true, logical operators will behave as bitwise operators, producing error codes if used with non-integer values.
-	//* If false, logical operators will use standard logical evaluation, treating any non-zero value as `true`.
-	//* Default value: false
+	//* If false, logical operators will use standard logical evaluation, treating any non-zero mat as `true`.
+	//* Default mat: false
 	void setForceBitwiseLogic(const bool forceBitwiseLogic) {
 		_forceBitwiseLogic = forceBitwiseLogic;
 	}
 
-	//* This will return a struct, containing the value and the evaluation result (error code).
+	//* This will return a struct, containing the mat and the evaluation result (error code).
 	EvaluationResult evaluate() const {
 		if (_formattingResult.second != ErrorCodes::SUCCESS)
 			return { 0, _formattingResult.second };
