@@ -2,7 +2,7 @@
 // Licensed under SALEM PERSONAL-USE LICENSE (SPUL) v1.0.
 // Use: private/personal projects only. No fork/modify/redistribute.
 // Fingerprint: SLM-2025-FP-18A3QE
-// Contact: abdulrahman.mohammad.salem@gmail.com
+// Contact: abdulrahmansalem.contact@gmail.com
 
 #include <iostream>
 #include <cstdlib>
@@ -218,3 +218,4 @@ int main() {
 
 	return 0;
 }
+
