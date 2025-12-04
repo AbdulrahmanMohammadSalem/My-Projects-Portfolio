@@ -3,6 +3,7 @@
 // Use: private/personal projects only. No fork/modify/redistribute.
 // Fingerprint: SLM-2025-FP-18A3QE
 // Contact: abdulrahmansalem.contact@gmail.com
+
 #pragma once
 
 #include <iostream>
@@ -199,4 +200,5 @@ namespace readers {
 	}
 
 }
+
 
